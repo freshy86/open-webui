@@ -119,6 +119,54 @@ Pattern to follow: new feature → router endpoint(s) in `routers/`, data functi
 - `.github/workflows/` — CI: `frontend.yaml` (format + i18n + build + Vitest), `backend.yaml` (Ruff format/check on Python 3.11 and 3.12), `regression.yaml` (release suite), `docker.yaml` (image builds).
 - `scripts/` — build helpers: `build-info.js` (version/channel injection), `prepare-pyodide.js` (fetches Pyodide for code interpreter), `encryption/` (verified by `npm run crypto:verify` predev/prebuild hooks), `i18n/check.mjs`.
 
+## Docker image — build & publish (this fork)
+
+The fork publishes a private arm64 image to `ghcr.io/freshy86/open-webui`, tagged with the branch name (e.g. `v0.12.4_modified`). CI does this automatically for `main`/`dev`/`v*` tags; for this branch, build and push locally.
+
+### Prerequisites
+
+- Docker + buildx installed (`docker.io`, `docker-buildx` packages on Ubuntu); this machine is **arm64**.
+- **RAM matters**: the Vite frontend build needs ~12 GB Node heap (`NODE_OPTIONS=--max-old-space-size=12288` is set in the Dockerfile) and runs in parallel with the backend dependency stage. **15 GB RAM minimum**; on the original 7.7 GB box the kernel OOM-killed node twice. No swap needed at 15 GB, but an 8 GB swapfile helps below that.
+- **Disk**: 60+ GB free. Build cache alone is ~11 GB; final image ~6 GB.
+- **DNS fix (already applied)**: `/etc/docker/daemon.json` sets `"dns": ["8.8.8.8", "1.1.1.1"]` because the host's systemd-resolved stub (`127.0.0.53`) is unreachable from build containers — without it, `apt-get update` inside the build fails with `Temporary failure resolving`.
+- **Auth**: push credentials live in a GPG-encrypted `pass` store (`docker-credential-pass` + `credsStore: pass` in `/root/.docker/config.json`). No plaintext token anywhere. If auth ever fails, re-login (token typed in the user's own terminal, never in chat):
+  ```sh
+  read -rs TOKEN && echo "$TOKEN" | sudo docker login ghcr.io -u freshy86 --password-stdin
+  ```
+  A first-ever push of a new tag may fail once with a transient `denied` — just retry the push.
+
+### Build
+
+```sh
+sudo docker buildx build --platform linux/arm64 --load \
+  --build-arg BUILD_HASH=$(git rev-parse --short HEAD) \
+  --build-arg BUILD_CHANNEL=unknown \
+  -t ghcr.io/freshy86/open-webui:v0.12.4_modified \
+  /home/ubuntu/open-webui
+```
+
+Notes:
+- `--load` is required or the finished image never lands in the local store (buildx completes "successfully" without it).
+- Variants via build args: `USE_SLIM=true`, `USE_CUDA=true`, `USE_OLLAMA=true` (see Dockerfile header).
+- The image bundles the built frontend; the container serves everything on port 8080 (`bash start.sh`).
+
+### Push
+
+```sh
+sudo docker push ghcr.io/freshy86/open-webui:v0.12.4_modified
+```
+
+The package is **private** — target machines must `docker login ghcr.io -u freshy86` (a `read:packages` token suffices) before pulling.
+
+### Run (any machine, after login)
+
+```sh
+docker run -d -p 3000:8080 \
+  -v open-webui:/app/backend/data \
+  --name open-webui --restart always \
+  ghcr.io/freshy86/open-webui:v0.12.4_modified
+```
+
 ## Before you finish
 
 1. `npm run format` (frontend) — CI requires a clean tree after format + i18n.
