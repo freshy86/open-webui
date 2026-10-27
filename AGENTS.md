@@ -121,7 +121,7 @@ Pattern to follow: new feature → router endpoint(s) in `routers/`, data functi
 
 ## Docker image — build & publish (this fork)
 
-The fork publishes a private arm64 image to `ghcr.io/freshy86/open-webui`, tagged with the branch name (e.g. `v0.12.4_modified`). CI does this automatically for `main`/`dev`/`v*` tags; for this branch, build and push locally.
+The fork publishes a private arm64 image to `ghcr.io/freshy86/open-webui`, tagged with the **currently checked-out branch name** (whatever `git branch --show-current` returns). CI does this automatically for `main`/`dev`/`v*` tags; for other branches, build and push locally.
 
 ### Prerequisites
 
@@ -141,7 +141,7 @@ The fork publishes a private arm64 image to `ghcr.io/freshy86/open-webui`, tagge
 sudo docker buildx build --platform linux/arm64 --load \
   --build-arg BUILD_HASH=$(git rev-parse --short HEAD) \
   --build-arg BUILD_CHANNEL=unknown \
-  -t ghcr.io/freshy86/open-webui:v0.12.4_modified \
+  -t ghcr.io/freshy86/open-webui:$(git branch --show-current) \
   /home/ubuntu/open-webui
 ```
 
@@ -153,7 +153,7 @@ Notes:
 ### Push
 
 ```sh
-sudo docker push ghcr.io/freshy86/open-webui:v0.12.4_modified
+sudo docker push ghcr.io/freshy86/open-webui:$(git branch --show-current)
 ```
 
 The package is **private** — target machines must `docker login ghcr.io -u freshy86` (a `read:packages` token suffices) before pulling.
@@ -164,7 +164,7 @@ The package is **private** — target machines must `docker login ghcr.io -u fre
 docker run -d -p 3000:8080 \
   -v open-webui:/app/backend/data \
   --name open-webui --restart always \
-  ghcr.io/freshy86/open-webui:v0.12.4_modified
+  ghcr.io/freshy86/open-webui:<branch-name>
 ```
 
 ## Before you finish
