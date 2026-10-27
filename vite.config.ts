@@ -30,6 +30,7 @@ export default defineConfig({
 	define: {
 		APP_VERSION: JSON.stringify(process.env.npm_package_version),
 		APP_BUILD_HASH: JSON.stringify(buildInfo.hash),
+		APP_BUILD_BRANCH: JSON.stringify(buildInfo.branch),
 		APP_BUILD_CHANNEL: JSON.stringify(buildInfo.channel)
 	},
 	build: {

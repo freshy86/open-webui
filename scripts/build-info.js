@@ -23,9 +23,9 @@ export function resolveBuildInfo({
 	const hash = /^(?:[a-f\d]{7,40}|[a-f\d]{64})$/i.test(suppliedHash)
 		? suppliedHash
 		: git('rev-parse', 'HEAD');
+	const branch = env.APP_BUILD_BRANCH || git('branch', '--show-current');
 	let channel = env.APP_BUILD_CHANNEL;
 	if (!['main', 'dev', 'unknown'].includes(channel)) {
-		const branch = git('branch', '--show-current');
 		channel = branch === 'main' || branch === 'dev' ? branch : 'unknown';
 		if (!branch && hash) {
 			try {
@@ -39,5 +39,5 @@ export function resolveBuildInfo({
 		}
 	}
 
-	return { channel, hash };
+	return { branch, channel, hash };
 }

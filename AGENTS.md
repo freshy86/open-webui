@@ -146,6 +146,7 @@ The fork publishes a private arm64 image to `ghcr.io/freshy86/open-webui`, tagge
 ```sh
 sudo docker buildx build --platform linux/arm64 --load \
   --build-arg BUILD_HASH=$(git rev-parse --short HEAD) \
+  --build-arg BUILD_BRANCH=$(git branch --show-current) \
   --build-arg BUILD_CHANNEL=unknown \
   -t ghcr.io/freshy86/open-webui:$(git branch --show-current) \
   /home/ubuntu/open-webui

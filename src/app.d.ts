@@ -8,6 +8,7 @@ declare global {
 
 	const APP_VERSION: string;
 	const APP_BUILD_HASH: string;
+	const APP_BUILD_BRANCH: string;
 	const APP_BUILD_CHANNEL: 'main' | 'dev' | 'unknown';
 
 	namespace App {
