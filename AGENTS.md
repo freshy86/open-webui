@@ -53,6 +53,11 @@ sh dev.sh            # uvicorn with --reload at http://localhost:8080
 ```
 
 - API docs: `http://localhost:8080/docs`
+- **`WEBUI_SECRET_KEY` is a hard requirement** (auth is on by default and this fork exits instead of auto-generating a key). It is already set in the repo-root `.env`; if starting from a clean checkout, generate one:
+  ```sh
+  printf 'WEBUI_SECRET_KEY=%s\n' "$(python -c 'import secrets; print(secrets.token_urlsafe(48))')" >> .env
+  ```
+- The backend loads env vars from the **repo-root `.env`**, not `backend/.env` (`BASE_DIR` in `open_webui/env.py` is the repo root). Vite uses the same file.
 - `dev.sh` sets `CORS_ALLOW_ORIGIN` for `localhost:5173`; add other origins there when testing from another device.
 - Never share a data directory or database between dev and production: dev builds can contain non-backward-compatible migrations. Local data lives in `backend/data/` (SQLite `webui.db`, uploads, vector DB) — do not commit it.
 
@@ -60,6 +65,7 @@ sh dev.sh            # uvicorn with --reload at http://localhost:8080
 
 - `FATAL ERROR: Reached Heap Limit` → `export NODE_OPTIONS="--max-old-space-size=4096"` and retry; ensure ~4 GB RAM.
 - Port conflicts on 5173/8080 → change the port in `vite.config.ts` or via `PORT` in `dev.sh`.
+- Backend never binds 8080 but no traceback appears → the uvicorn worker crashed at startup while the `--reload` parent keeps waiting. Run `venv/bin/python -c "import open_webui.main"` in `backend/` to see the real error (most often the missing `WEBUI_SECRET_KEY` above). A quick `curl localhost:8080/api/version` tells you whether the backend is actually up.
 - Static assets/icons failing to load → CORS; align `CORS_ALLOW_ORIGIN` in `backend/dev.sh` with the frontend origin.
 
 ## Common commands
