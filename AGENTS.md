@@ -180,45 +180,11 @@ Key files: `backend/open_webui/utils/plugin.py` (loader, frontmatter, hot-reload
 
 The fork publishes a private arm64 image to `ghcr.io/freshy86/open-webui`, tagged with the **currently checked-out branch name** (whatever `git branch --show-current` returns). CI does this automatically for `main`/`dev`/`v*` tags; for other branches, build and push locally.
 
-### Prerequisites
-
-- Docker + buildx installed (`docker.io`, `docker-buildx` packages on Ubuntu); this machine is **arm64**.
-- **RAM matters**: the Vite frontend build needs ~12 GB Node heap (`NODE_OPTIONS=--max-old-space-size=12288` is set in the Dockerfile) and runs in parallel with the backend dependency stage. **15 GB RAM minimum**; on the original 7.7 GB box the kernel OOM-killed node twice. No swap needed at 15 GB, but an 8 GB swapfile helps below that.
-- **Disk**: ~15 GB free is comfortable, not the previously claimed 60+ GB. The build cache is capped at **12 GB** by an LRU GC policy in `/etc/docker/daemon.json` (`builder.gc.policy`, added 2026-10-30 — backup at `daemon.json.bak`); it automatically evicts the least-recently-used entries, so repeated builds can't balloon it (an uncapped cache grew to 20 GB, ~7 GB of it duplicate pip-venv layers from failed build attempts). The warm set that keeps builds at ~1–3 min instead of ~15+ is ~8 GB: frontend stage 3.9 GB (npm deps + Vite build), backend pip venv 2.34 GB, base/apt layers ~1.5 GB. Final image ~6 GB if loaded with `--load`. Too-small cache only costs a slower rebuild (re-running pip/npm), never a broken build.
-- **Docker data root**: with the containerd image store, cache actually lives in `/var/lib/containerd` (~12 GB), not `/var/lib/docker`. `docker system df` may show a phantom "Images ... 100% reclaimable" row right after a prune — cross-check with `du -sh /var/lib/containerd` and `docker images -a` (empty) before trying to "free" it.
-- **DNS fix (already applied)**: `/etc/docker/daemon.json` sets `"dns": ["8.8.8.8", "1.1.1.1"]` because the host's systemd-resolved stub (`127.0.0.53`) is unreachable from build containers — without it, `apt-get update` inside the build fails with `Temporary failure resolving`.
-- **Auth**: push credentials live in a GPG-encrypted `pass` store (`docker-credential-pass` + `credsStore: pass` in `/root/.docker/config.json`). No plaintext token anywhere. If auth ever fails, re-login (token typed in the user's own terminal, never in chat):
-  ```sh
-  read -rs TOKEN && echo "$TOKEN" | sudo docker login ghcr.io -u freshy86 --password-stdin
-  ```
-  A first-ever push of a new tag may fail once with a transient `denied` — just retry the push.
-
-### Build
-
-```sh
-sudo docker buildx build --platform linux/arm64 --load \
-  --build-arg BUILD_HASH=$(git rev-parse --short HEAD) \
-  --build-arg BUILD_BRANCH=$(git branch --show-current) \
-  --build-arg BUILD_CHANNEL=unknown \
-  -t ghcr.io/freshy86/open-webui:$(git branch --show-current) \
-  /home/ubuntu/open-webui
-```
-
-Notes:
-
-- `--load` is required or the finished image never lands in the local store (buildx completes "successfully" without it).
-- Variants via build args: `USE_SLIM=true`, `USE_CUDA=true`, `USE_OLLAMA=true` (see Dockerfile header).
-- The image bundles the built frontend; the container serves everything on port 8080 (`bash start.sh`).
-
-### Push
-
-```sh
-sudo docker push ghcr.io/freshy86/open-webui:$(git branch --show-current)
-```
-
-The package is **private** — target machines must `docker login ghcr.io -u freshy86` (a `read:packages` token suffices) before pulling.
+**Do not build or push from the steps in this file — use the `docker-build-push` skill** (`.opencode/skills/docker-build-push/SKILL.md`). It is the single source of truth for: pre-flight checks (RAM, disk, DNS fix, ghcr auth), the build (background run, log verification, variants), the push (transient-`denied` retry, re-login flow), and the post-push cleanup step that always frees unneeded disk space while preserving the warm build cache. It explicitly never starts the container.
 
 ### Run (any machine, after login)
+
+The image bundles the built frontend; the container serves everything on port 8080 (`bash start.sh`). The package is **private** — target machines must `docker login ghcr.io -u freshy86` (a `read:packages` token suffices) before pulling.
 
 ```sh
 docker run -d -p 3000:8080 \

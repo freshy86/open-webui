@@ -146,11 +146,9 @@ A small table: step (build / push / cleanup), status (✅/❌), image tag, disk
 freed, and the actual error plus fix for anything red. Verify by log content,
 `sudo docker images`, and `df -h /`, not by the absence of an error message.
 
-## 6. Run (any machine, after login) — reference
+## 6. Do not run the image automatically
 
-```sh
-docker run -d -p 3000:8080 \
-  -v open-webui:/app/backend/data \
-  --name open-webui --restart always \
-  ghcr.io/freshy86/open-webui:<branch-name>
-```
+This skill ends at build + push + cleanup + report. **Never start the container
+as part of this flow** — not locally, not anywhere. Running the image is a
+manual step done by the user on target machines (the reference command lives
+in the "Run" section of `AGENTS.md`).
