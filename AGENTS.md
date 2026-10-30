@@ -17,6 +17,16 @@ Open WebUI is a self-hosted AI chat interface. It is a monorepo with two apps:
 - **Review AI-generated code before submitting it** (PR checklist requirement). Do not commit code you cannot explain.
 - Do not edit generated or vendored files: `static/` build output, `src/lib/i18n/locales/*` except the English source locale, Pyodide assets fetched by `npm run pyodide:fetch`, and `package-lock.json` (edit `package.json` instead; lockfile changes go through `npm install`).
 
+## General development rules (fork directives — user's explicit instructions)
+
+These apply to this fork and take precedence over the upstream notes above where they differ.
+
+1. **Never commit or push on your own.** The user decides when to commit and push. Do the work, run the verification, and report that it is ready — then wait for the user's go-ahead.
+2. **Capture general knowledge.** If you learn something general and valuable for future coding sessions (gotchas, verification tricks, architecture facts), write it to `AGENTS.md` so it survives the session.
+3. **Reuse existing features first.** Before writing new code, check whether the codebase already has a component, API, utility, or pattern that does it — extend it rather than duplicating it.
+4. **Modularize shared features.** If a new feature is needed in more than one place, extract it into a shared module/component immediately instead of duplicating logic across call sites.
+5. **Always test new features.** Manually verify the changed workflow end-to-end, and ideally add unit tests where they fit the existing test setup. (This overrides the upstream "do not add tests" rule — the fork owner requests it.)
+
 ## Environment requirements
 
 | Tool    | Version                                                                                  |
