@@ -25,19 +25,10 @@ sudo docker system df                              # quick breakdown
 sudo docker builder du 2>/dev/null | tail -2       # cache total + reclaimable
 ```
 
-- **< 15 GB free → prune before building.** The build cache is already
-  auto-capped at **12 GB** by the LRU GC policy in `/etc/docker/daemon.json`
-  (`builder.gc.policy`), so the cache cannot be the thing that ate the disk —
-  look at dangling images/containers instead.
-- Safe to prune, in order of value:
-  ```sh
-  sudo docker builder prune -f --filter until=48h   # only cache unused for 48h; warm set survives
-  sudo docker container prune -f                    # stopped containers
-  sudo docker image prune -f                        # dangling images
-  ```
-  **Never** run `docker volume prune` or `docker system prune --volumes` —
-  that can delete app data (`backend/data` volumes). Ask the user first if
-  anything beyond the three commands above is needed.
+- **< 15 GB free → run the cleanup step (section 4) before building.** The
+  build cache is already auto-capped at **12 GB** by the LRU GC policy in
+  `/etc/docker/daemon.json` (`builder.gc.policy`), so the cache cannot be the
+  thing that ate the disk — look at stale images/containers instead.
 - **Phantom "Images … 100% reclaimable" row**: `docker system df` may claim
   GBs of reclaimable images while `docker images -a` is empty. That is
   containerd image-store accounting for the last ghcr push's content blobs,
@@ -104,13 +95,58 @@ sudo docker push ghcr.io/freshy86/open-webui:$(git branch --show-current)
   `docker login ghcr.io -u freshy86` (a `read:packages` token suffices) before
   pulling.
 
-## 4. Report
+## 4. Cleanup (always, right after a successful push — or whenever asked to free Docker disk space)
 
-A small table: step (build / push), status (✅/❌), image tag, and the actual
-error plus fix for anything red. Verify by log content and
-`sudo docker images`, not by the absence of an error message.
+Free everything that is not needed, while keeping exactly the build cache that
+speeds up the next build. Measure before and after:
 
-## 5. Run (any machine, after login) — reference
+```sh
+df -h / | tail -1
+```
+
+Free, in order of value:
+
+```sh
+# 1. the local image — ~6 GB, it lives on ghcr now and is not needed locally
+sudo docker rmi ghcr.io/freshy86/open-webui:$(git branch --show-current)
+
+# 2. stopped containers and dangling images
+sudo docker container prune -f
+sudo docker image prune -f
+
+# 3. build cache excess — keeps the 12 GB most-recently-used entries (the
+#    warm set) regardless of age, evicts only stale duplicates/excess;
+#    same reserve as the daemon GC cap, so this is a no-op unless the
+#    cache exceeded the cap between builds
+sudo docker builder prune -f --reserved-space=12GB
+```
+
+Hard rules:
+
+- **Never a plain `docker builder prune -f`** (no reserve): it wipes the warm
+  cache and turns the next build into a ~15+ min cold rebuild. The warm set is
+  ~8 GB (frontend stage 3.9 GB, pip venv 2.34 GB, base/apt ~1.5 GB).
+- **Never use an age filter** (`--filter until=…`) for cache pruning: it keys
+  on last-use time, so after any build gap longer than the filter window it
+  deletes the *entire* warm set. Only `--reserved-space` (LRU,
+  age-independent) or the daemon GC cap are safe.
+- **Never `docker volume prune` or `docker system prune --volumes`** — that can
+  delete app data (`backend/data` volumes). Anything beyond the three commands
+  above: ask the user first.
+- Do not remove the local image until the push has succeeded. If the user wants
+  to run the image on this machine, keep it (or re-pull it later) — that is
+  ~6 GB by choice, not waste.
+- The phantom "Images … 100% reclaimable" row (section 1) is not freed by
+  `image prune` and not extra disk to begin with — ignore it; the cache GC cap
+  handles cache eviction automatically.
+
+## 5. Report
+
+A small table: step (build / push / cleanup), status (✅/❌), image tag, disk
+freed, and the actual error plus fix for anything red. Verify by log content,
+`sudo docker images`, and `df -h /`, not by the absence of an error message.
+
+## 6. Run (any machine, after login) — reference
 
 ```sh
 docker run -d -p 3000:8080 \
