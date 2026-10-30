@@ -4137,6 +4137,7 @@
 	"You do not have permission to upload files to this knowledge base.": "Sinulla ei ole oikeuksia ladata tiedostoja tähän tietokantaan.",
 	"You do not have permission to upload files.": "Sinulla ei ole lupaa ladata tiedostoja.",
 	"You do not have permission to upload web content.": "Sinulla ei ole lupaa ladata verkkosisältöä.",
+	"You do not have write access to this note": "",
 	"You have more than 50 users, which often means this workspace is supporting organizational use. Open WebUI is free to use as-is, with no restrictions or hidden limits, and we want to keep it that way.": "Sinulla on yli 50 käyttäjää, mikä tarkoittaa usein, että tämä työtila tukee organisaatiokäyttöä. Open WebUI:ta voi käyttää sellaisenaan maksutta, ilman rajoituksia tai piilotettuja rajoja, ja haluamme pitää sen sellaisena.",
 	"You have no archived conversations.": "Sinulla ei ole arkistoituja keskusteluja.",
 	"You have no shared conversations.": "Sinulla ei ole jaettuja keskusteluja.",

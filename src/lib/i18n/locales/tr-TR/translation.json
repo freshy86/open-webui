@@ -4137,6 +4137,7 @@
 	"You do not have permission to upload files to this knowledge base.": "Bu bilgi tabanına dosya yükleme izniniz yok.",
 	"You do not have permission to upload files.": "Dosya yüklemek için izniniz yok.",
 	"You do not have permission to upload web content.": "Web içeriği yükleme izniniz yok.",
+	"You do not have write access to this note": "",
 	"You have more than 50 users, which often means this workspace is supporting organizational use. Open WebUI is free to use as-is, with no restrictions or hidden limits, and we want to keep it that way.": "50'den fazla kullanıcınız var, bu genellikle bu çalışma alanının kurumsal kullanımı desteklediği anlamına gelir. Open WebUI, herhangi bir kısıtlama veya gizli sınır olmaksızın olduğu gibi kullanımı ücretsizdir ve bunu bu şekilde tutmak istiyoruz.",
 	"You have no archived conversations.": "Arşivlenmiş sohbetleriniz yok.",
 	"You have no shared conversations.": "Paylaştığınız sohbet yok.",

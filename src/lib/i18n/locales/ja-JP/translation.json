@@ -4129,6 +4129,7 @@
 	"You do not have permission to upload files to this knowledge base.": "このナレッジベースにファイルをアップロードする権限がありません。",
 	"You do not have permission to upload files.": "ファイルをアップロードする権限がありません。",
 	"You do not have permission to upload web content.": "ウェブコンテンツをアップロードする権限がありません。",
+	"You do not have write access to this note": "",
 	"You have more than 50 users, which often means this workspace is supporting organizational use. Open WebUI is free to use as-is, with no restrictions or hidden limits, and we want to keep it that way.": "ユーザー数が50人を超えているため、このワークスペースは組織で利用されている可能性があります。Open WebUIは制限や隠れた上限なく、そのまま無料で利用でき、今後もその方針を維持したいと考えています。",
 	"You have no archived conversations.": "これまでにアーカイブされた会話はありません。",
 	"You have no shared conversations.": "共有された会話がありません。",

@@ -4137,6 +4137,7 @@
 	"You do not have permission to upload files to this knowledge base.": "Níl cead agat comhaid a uaslódáil chuig an mbunachar eolais seo.",
 	"You do not have permission to upload files.": "Níl cead agat comhaid a uaslódáil.",
 	"You do not have permission to upload web content.": "Níl cead agat ábhar gréasáin a uaslódáil.",
+	"You do not have write access to this note": "",
 	"You have more than 50 users, which often means this workspace is supporting organizational use. Open WebUI is free to use as-is, with no restrictions or hidden limits, and we want to keep it that way.": "Tá níos mó ná 50 úsáideoir agat, rud a chiallaíonn go minic go bhfuil an spás oibre seo ag tacú le húsáid eagraíochtúil. Tá Open WebUI saor in aisce le húsáid mar atá, gan aon srianta ná teorainneacha i bhfolach, agus ba mhaith linn é a choinneáil mar sin.",
 	"You have no archived conversations.": "Níl aon chomhráite cartlainne agat.",
 	"You have no shared conversations.": "Níl aon chomhráite comhroinnte agat.",

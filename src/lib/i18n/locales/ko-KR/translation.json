@@ -4115,6 +4115,7 @@
 	"You do not have permission to upload files to this knowledge base.": "이 지식 베이스에 파일을 업로드할 권한이 없습니다",
 	"You do not have permission to upload files.": "파일을 업로드할 권한이 없습니다.",
 	"You do not have permission to upload web content.": "웹 콘텐츠를 업로드할 권한이 없습니다",
+	"You do not have write access to this note": "",
 	"You have more than 50 users, which often means this workspace is supporting organizational use. Open WebUI is free to use as-is, with no restrictions or hidden limits, and we want to keep it that way.": "사용자가 50명을 넘었습니다. 이는 보통 이 워크스페이스가 조직 단위로 사용되고 있다는 뜻입니다. Open WebUI는 제한이나 숨겨진 한도 없이 있는 그대로 무료로 사용할 수 있으며, 앞으로도 그렇게 유지하고자 합니다.",
 	"You have no archived conversations.": "채팅을 보관한 적이 없습니다.",
 	"You have no shared conversations.": "공유된 대화가 없습니다.",

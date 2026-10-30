@@ -38,6 +38,8 @@
 		getPinnedNoteList
 	} from '$lib/apis/notes';
 	import { capitalizeFirstLetter, copyToClipboard, formatNumber, getTimeRange } from '$lib/utils';
+	import { uploadFile } from '$lib/apis/files';
+	import { getKnowledgeBases } from '$lib/apis/knowledge';
 	import { downloadPdf, createNoteHandler } from './utils';
 
 	import EllipsisHorizontal from '../icons/EllipsisHorizontal.svelte';
@@ -65,6 +67,9 @@
 	let selectedNote = null;
 	let openNoteMenuId: string | null = null;
 	let showDeleteConfirm = false;
+	let knowledgeBases: { id: string; name: string }[] = [];
+	let showMoveConfirm = false;
+	let moveTargetKb: { id: string; name: string } | null = null;
 	let shiftKey = false;
 
 	let notes = {};
@@ -119,6 +124,72 @@
 		if (res) {
 			pinnedNotes.set(await getPinnedNoteList(localStorage.token).catch(() => []));
 			init();
+		}
+	};
+
+	const loadKnowledgeBases = async () => {
+		const writable = [];
+		let page = 1;
+		let fetched = 0;
+
+		while (page <= 20) {
+			const res = await getKnowledgeBases(localStorage.token, page).catch(() => null);
+			if (!res?.items?.length) {
+				break;
+			}
+
+			for (const kb of res.items) {
+				if (kb.write_access) {
+					writable.push(kb);
+				}
+			}
+
+			fetched += res.items.length;
+			if (res.total && fetched >= res.total) {
+				break;
+			}
+
+			page += 1;
+		}
+
+		knowledgeBases = writable;
+	};
+
+	const moveToKnowledgeHandler = async (kb: { id: string; name: string } | null) => {
+		if (!kb || !selectedNote) {
+			return;
+		}
+
+		openNoteMenuId = null;
+
+		// The list response truncates note content, so fetch the full note first
+		const note = await getNoteById(localStorage.token, selectedNote.id).catch((error) => {
+			toast.error(`${error}`);
+			return null;
+		});
+
+		if (!note) return;
+
+		if (!note.write_access) {
+			toast.error($i18n.t('You do not have write access to this note'));
+			return;
+		}
+
+		const title = note?.title === '' ? $i18n.t('Untitled') : note.title;
+		const filename =
+			`${title.replace(/[/\\:*?"<>|]/g, '-').slice(0, 200) || 'Untitled'}.md` as string;
+		const file = new File([note?.data?.content?.md ?? ''], filename, { type: 'text/markdown' });
+
+		const res = await uploadFile(localStorage.token, file, { knowledge_id: kb.id }).catch((e) => {
+			toast.error(`${e}`);
+			return null;
+		});
+
+		if (res) {
+			toast.success($i18n.t('Note moved to {{name}}', { name: kb.name }));
+			await deleteNoteHandler(note.id);
+		} else {
+			toast.error($i18n.t('Failed to move note to knowledge base'));
 		}
 	};
 
@@ -318,6 +389,8 @@
 
 		loaded = true;
 
+		loadKnowledgeBases();
+
 		const dropzoneElement = document.getElementById('notes-container');
 		dropzoneElement?.addEventListener('dragover', onDragOver);
 		dropzoneElement?.addEventListener('drop', onDrop);
@@ -408,6 +481,21 @@
 		>
 			<div class=" text-sm text-gray-500 truncate">
 				{$i18n.t('This will delete')} <span class="  font-normal">{selectedNote.title}</span>.
+			</div>
+		</DeleteConfirmDialog>
+
+		<DeleteConfirmDialog
+			bind:show={showMoveConfirm}
+			title={$i18n.t('Move note to "{{name}}"?', { name: moveTargetKb?.name })}
+			on:confirm={() => {
+				showMoveConfirm = false;
+				moveToKnowledgeHandler(moveTargetKb);
+			}}
+		>
+			<div class=" text-sm text-gray-500 truncate">
+				{$i18n.t('This will copy the note to {{name}} as a markdown file and delete this note.', {
+					name: moveTargetKb?.name
+				})}
 			</div>
 		</DeleteConfirmDialog>
 
@@ -700,6 +788,14 @@
 																? () => accessModal.open(note.id)
 																: null}
 															show={openNoteMenuId === note.id}
+															knowledgeBases={note.user_id === $user?.id || $user?.role === 'admin'
+																? knowledgeBases
+																: []}
+															onMoveToKnowledge={(kb: { id: string; name: string }) => {
+																selectedNote = note;
+																moveTargetKb = kb;
+																showMoveConfirm = true;
+															}}
 															onDownload={(type) => {
 																selectedNote = note;
 
@@ -797,6 +893,14 @@
 															$user?.role === 'admin'
 																? () => accessModal.open(note.id)
 																: null}
+															knowledgeBases={note.user_id === $user?.id || $user?.role === 'admin'
+																? knowledgeBases
+																: []}
+															onMoveToKnowledge={(kb: { id: string; name: string }) => {
+																selectedNote = note;
+																moveTargetKb = kb;
+																showMoveConfirm = true;
+															}}
 															onDownload={(type) => {
 																selectedNote = note;
 

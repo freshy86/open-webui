@@ -4137,6 +4137,7 @@
 	"You do not have permission to upload files to this knowledge base.": "இந்த அறிவுத் தளத்தில் கோப்புகளைப் பதிவேற்ற உங்களுக்கு அனுமதி இல்லை.",
 	"You do not have permission to upload files.": "கோப்புகளைப் பதிவேற்ற உங்களுக்கு அனுமதி இல்லை.",
 	"You do not have permission to upload web content.": "இணைய உள்ளடக்கத்தை பதிவேற்ற உங்களுக்கு அனுமதி இல்லை.",
+	"You do not have write access to this note": "",
 	"You have more than 50 users, which often means this workspace is supporting organizational use. Open WebUI is free to use as-is, with no restrictions or hidden limits, and we want to keep it that way.": "உங்களிடம் 50 க்கும் மேற்பட்ட பயனர்கள் உள்ளனர், இது பெரும்பாலும் இந்தப் பணியிடம் நிறுவனப் பயன்பாட்டை ஆதரிப்பதைக் குறிக்கிறது. Open WebUI ஐ உள்ளபடியே எந்தக் கட்டுப்பாடுகளும் மறைமுக வரம்புகளும் இல்லாமல் இலவசமாகப் பயன்படுத்தலாம், அதை அப்படியே வைத்திருக்க விரும்புகிறோம்.",
 	"You have no archived conversations.": "உங்களிடம் காப்பகப்படுத்தப்பட்ட உரையாடல்கள் எதுவும் இல்லை.",
 	"You have no shared conversations.": "உங்களிடம் பகிரப்பட்ட உரையாடல்கள் எதுவும் இல்லை.",

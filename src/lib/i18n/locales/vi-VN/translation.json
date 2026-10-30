@@ -4112,6 +4112,7 @@
 	"You do not have permission to upload files to this knowledge base.": "Bạn không có quyền tải tệp lên cơ sở kiến thức này.",
 	"You do not have permission to upload files.": "Bạn không có quyền tải lên tệp.",
 	"You do not have permission to upload web content.": "Bạn không có quyền tải lên nội dung web.",
+	"You do not have write access to this note": "",
 	"You have more than 50 users, which often means this workspace is supporting organizational use. Open WebUI is free to use as-is, with no restrictions or hidden limits, and we want to keep it that way.": "Bạn có hơn 50 người dùng, điều này thường có nghĩa là không gian làm việc này đang phục vụ một tổ chức. Open WebUI được sử dụng miễn phí như hiện tại, không có hạn chế hay giới hạn ẩn nào, và chúng tôi muốn giữ nguyên như vậy.",
 	"You have no archived conversations.": "Bạn chưa lưu trữ một nội dung chat nào",
 	"You have no shared conversations.": "Bạn chưa chia sẻ cuộc trò chuyện nào.",

@@ -4237,6 +4237,7 @@
 	"You do not have permission to upload files to this knowledge base.": "ليس لديك إذن لرفع الملفات إلى قاعدة المعرفة هذه.",
 	"You do not have permission to upload files.": "ليس لديك صلاحية لرفع الملفات.",
 	"You do not have permission to upload web content.": "ليس لديك إذن لرفع محتوى الويب.",
+	"You do not have write access to this note": "",
 	"You have more than 50 users, which often means this workspace is supporting organizational use. Open WebUI is free to use as-is, with no restrictions or hidden limits, and we want to keep it that way.": "لديك أكثر من 50 مستخدمًا، مما يعني غالبًا أن مساحة العمل هذه تدعم استخدامًا مؤسسيًا. استخدام Open WebUI بصورته الحالية مجاني، دون قيود أو حدود خفية، ونريد أن يبقى كذلك.",
 	"You have no archived conversations.": "لا تملك محادثات محفوظه",
 	"You have no shared conversations.": "ليس لديك محادثات مشتركة.",
