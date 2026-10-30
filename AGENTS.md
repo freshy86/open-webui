@@ -82,6 +82,15 @@ sh dev.sh            # uvicorn with --reload at http://localhost:8080
 | `npm run i18n:parse` / `i18n:check` | Extract/validate i18n keys (CI runs these and requires a clean tree) |
 | `npm run dev` / `dev:5050`          | Dev server on 5173 / 5050                                            |
 
+Verification gotchas learned the hard way:
+
+- `npm run check` reports a **large pre-existing error baseline (~5.7k errors)** — absolute counts tell you nothing. To verify a change, diff the diagnostics **by message text** before/after your edit (stash your edits, run check, unstash, run again, diff the message lists). Line numbers shift, so don't diff by line. Pitfall: `git stash` without `-u` leaves untracked files in place, so newly added files pollute the baseline either way — remove or stash them too.
+- `npm run build` is the **authoritative check for module resolution**. It caught a broken import that svelte-check's baseline noise hid. Always run it before finishing UI changes, even when `npm run check` looked clean.
+- `i18n` is **Svelte context, not a store** (`getContext('i18n')` in components). Plain `.ts` modules have no access to `$i18n.t()` — keep user-facing strings in components, or pass translated strings into the module.
+- `npm run test:frontend` runs Vitest in **watch mode and hangs** — append `-- run` (or `npx vitest run`) for a one-shot run.
+- `npm run format` reflows the vendored `static/pyodide/pyodide-lock.json`. Revert that file (`git checkout -- static/pyodide/pyodide-lock.json`); never commit it.
+- `GET /api/v1/notes` list/search responses **truncate note content (~1000 chars)**. When full note content is needed (download, move, export), re-fetch the note by ID (`getNoteById`) — e.g. the notes download/move handlers do exactly this.
+
 ### Backend (`backend/`, venv active)
 
 | Command                                            | What it does                                                                    |
