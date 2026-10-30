@@ -125,6 +125,38 @@ Pattern to follow: new feature → router endpoint(s) in `routers/`, data functi
 - `.github/workflows/` — CI: `frontend.yaml` (format + i18n + build + Vitest), `backend.yaml` (Ruff format/check on Python 3.11 and 3.12), `regression.yaml` (release suite), `docker.yaml` (image builds).
 - `scripts/` — build helpers: `build-info.js` (version/channel injection), `prepare-pyodide.js` (fetches Pyodide for code interpreter), `encryption/` (verified by `npm run crypto:verify` predev/prebuild hooks), `i18n/check.mjs`.
 
+## Extensibility — prefer plugins over core edits
+
+Before touching core code for a user request, check whether the existing addon mechanisms can do it. DB-stored plugins survive upgrades; forks of core code drift with every upstream release.
+
+### Runtime plugin mechanisms (no code changes needed)
+
+| Mechanism | Where managed | Hook class | Use for |
+| --- | --- | --- | --- |
+| **Functions** | Admin Panel → Functions (DB-stored) | `Pipe` / `Filter` / `Action` / `Event` | Custom model providers, inlet/outlet/stream message middleware, message buttons, lifecycle events |
+| **Tools** | Workspace → Tools (DB-stored) | `Tools` class, methods → tool specs | Abilities the LLM can call (live data, external APIs) |
+| **Tool servers / MCP** | Admin → Settings → Tool Servers | — | Out-of-process tools via OpenAPI spec or MCP (HTTP-only, no stdio) |
+| **Functions/Tools/Skills version history** | per-plugin | — | This fork snapshots every save (`*_history` tables); diff/rollback after upgrades |
+
+Key files: `backend/open_webui/utils/plugin.py` (loader, frontmatter, hot-reload), `backend/open_webui/functions.py` (hook dispatch), `backend/open_webui/models/functions.py` / `models/tools.py` (DB + CRUD), `backend/open_webui/routers/functions.py` / `routers/tools.py` (admin API), `backend/open_webui/utils/mcp/` (MCP client). Docs: https://docs.openwebui.com/features/extensibility/plugin/
+
+### Constraints & limitations
+
+- **No sandbox**: Functions/Tools `exec()` in-process with full privileges, no import blacklist. Mutations are admin-only (`get_admin_user`); kill-switches `ENABLE_FUNCTIONS` / `ENABLE_TOOLS` / `ENABLE_TOOL_SERVERS` (`.env.example`).
+- **pip install disabled by default**: frontmatter `requirements:` installs only with `ENABLE_PIP_INSTALL_FRONTMATTER_REQUIREMENTS=true` (never in `OFFLINE_MODE`); runs on the host, not a container.
+- **Hot reload** is content-hash based per worker process — admin UI edits apply immediately, but uvicorn workers each reload independently. A failing function is auto-deactivated (`is_active = false`).
+- **No versioned plugin API**: hook signatures change between releases (`stream` added in 0.5.17). Plugins should stick to documented contracts (hook args, `__event_emitter__` / `__event_call__`, valves/UserValves) and avoid internal `open_webui.utils.*` imports beyond `utils/plugin.py`'s legacy-path rewrite (`from utils…` → `from open_webui.utils…`).
+- **Frontend is closed to plugins**: only static injection points are `static/custom.css` and `static/loader.js` (deployment-time mounts); themes are fixed (`dark` / `light` / `oled-dark`). UI beyond Action buttons and event-emitted status can't come from a plugin.
+- **Legacy "pipelines" framework is deprecated** in favor of in-process Functions; it now rides on OpenAI-compatible connections serving `/pipelines`.
+- This fork additionally has **Skills**, **Apps** (external bot/webhook integrations), and **Automations** — not in stock upstream; don't assume they exist when comparing against upstream issues.
+
+### Choosing an extension point
+
+1. Deep lifecycle hooks / platform behavior → **Function** (Filter/Pipe/Action).
+2. New model abilities → **Tool**.
+3. Anything isolatable, or where version coupling matters → **external tool server (MCP/OpenAPI)**.
+4. Deployment customization (branding, headers) → env vars (`env.py`, document in `.env.example`) or `static/` mounts.
+
 ## Docker image — build & publish (this fork)
 
 The fork publishes a private arm64 image to `ghcr.io/freshy86/open-webui`, tagged with the **currently checked-out branch name** (whatever `git branch --show-current` returns). CI does this automatically for `main`/`dev`/`v*` tags; for other branches, build and push locally.
