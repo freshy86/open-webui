@@ -77,7 +77,7 @@ sh dev.sh            # uvicorn with --reload at http://localhost:8080
 | `npm run build`                     | Production build (Vite, 12 GB heap)                                  |
 | `npm run check`                     | `svelte-check` type checking — run this after TS/Svelte changes      |
 | `npm run lint:frontend`             | ESLint with `--fix`                                                  |
-| `npm run format`                    | Prettier over js/ts/svelte/css/md/html/json                          |
+| `npm run format`                    | Prettier over js/ts/svelte/css/html/json (markdown is excluded)      |
 | `npm run test:frontend`             | Vitest unit tests                                                    |
 | `npm run i18n:parse` / `i18n:check` | Extract/validate i18n keys (CI runs these and requires a clean tree) |
 | `npm run dev` / `dev:5050`          | Dev server on 5173 / 5050                                            |
