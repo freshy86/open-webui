@@ -1,6 +1,6 @@
 ---
 name: Build & Push Docker Image
-description: Rebuild the private arm64 Open WebUI image and push it to ghcr.io/freshy86/open-webui, tagged with the current branch. Use when the user asks to (re)build the Docker image, publish it to ghcr, or ship a new image for the current branch.
+description: Rebuild the private arm64 Open WebUI image and push it to ghcr.io/freshy86/open-webui, tagged with the current branch. Use when the user asks to (re)build the Docker image, publish it to ghcr, ship a new image for the current branch, or asks to check/free Docker disk space (what can be pruned).
 ---
 
 Build and publish the private arm64 image to `ghcr.io/freshy86/open-webui`,
@@ -12,14 +12,39 @@ tagged with the **currently checked-out branch name** (whatever
 
 ```sh
 git branch --show-current                                   # the image tag
-df -h / | tail -1                                           # need 60+ GB free
-free -h | head -2                                           # need ~15 GB RAM (build cache alone is ~11 GB)
+free -h | head -2                                           # need ~15 GB RAM
 docker buildx version                                       # docker + buildx plugin
 grep -A2 credsStore /root/.docker/config.json 2>/dev/null   # expect credsStore: pass
 ```
 
-- Build cache is ~11 GB and the final image ~6 GB — if disk is tight, prune
-  first: `sudo docker builder prune` (ask before pruning other things).
+### Disk space check (always run before building)
+
+```sh
+df -h / | tail -1                                  # need ~15 GB free (cache cap + image)
+sudo docker system df                              # quick breakdown
+sudo docker builder du 2>/dev/null | tail -2       # cache total + reclaimable
+```
+
+- **< 15 GB free → prune before building.** The build cache is already
+  auto-capped at **12 GB** by the LRU GC policy in `/etc/docker/daemon.json`
+  (`builder.gc.policy`), so the cache cannot be the thing that ate the disk —
+  look at dangling images/containers instead.
+- Safe to prune, in order of value:
+  ```sh
+  sudo docker builder prune -f --filter until=48h   # only cache unused for 48h; warm set survives
+  sudo docker container prune -f                    # stopped containers
+  sudo docker image prune -f                        # dangling images
+  ```
+  **Never** run `docker volume prune` or `docker system prune --volumes` —
+  that can delete app data (`backend/data` volumes). Ask the user first if
+  anything beyond the three commands above is needed.
+- **Phantom "Images … 100% reclaimable" row**: `docker system df` may claim
+  GBs of reclaimable images while `docker images -a` is empty. That is
+  containerd image-store accounting for the last ghcr push's content blobs,
+  already inside the build cache total — not extra disk. Verify with
+  `sudo du -sh /var/lib/containerd`: if it is roughly the cache size
+  (≤ ~13 GB), there is nothing left to free. Cache lives there, not in
+  `/var/lib/docker`.
 - Host DNS is already fixed in `/etc/docker/daemon.json`
   (`"dns": ["8.8.8.8", "1.1.1.1"]`) because systemd-resolved's stub
   (127.0.0.53) is unreachable from build containers. If `apt-get update`
