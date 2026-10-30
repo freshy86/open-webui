@@ -2,6 +2,8 @@ import DOMPurify from 'dompurify';
 import { toast } from 'svelte-sonner';
 
 import { createNewNote } from '$lib/apis/notes';
+import { getKnowledgeBases } from '$lib/apis/knowledge';
+import { uploadFile } from '$lib/apis/files';
 import { safeImageUrl } from '$lib/utils/safeImageUrl';
 
 export const downloadPdf = async (note) => {
@@ -201,4 +203,55 @@ export const createNoteHandler = async (title: string, md?: string, html?: strin
 	if (res) {
 		return res;
 	}
+};
+
+export const loadWritableKnowledgeBases = async (token: string) => {
+	const writable = [];
+	let page = 1;
+	let fetched = 0;
+
+	while (page <= 20) {
+		const res = await getKnowledgeBases(token, page).catch(() => null);
+		if (!res?.items?.length) {
+			break;
+		}
+
+		for (const kb of res.items) {
+			if (kb.write_access) {
+				writable.push(kb);
+			}
+		}
+
+		fetched += res.items.length;
+		if (res.total && fetched >= res.total) {
+			break;
+		}
+
+		page += 1;
+	}
+
+	return writable;
+};
+
+export const noteFilename = (title: string) => {
+	return `${title.replace(/[/\\:*?"<>|]/g, '-').slice(0, 200) || 'Untitled'}.md`;
+};
+
+export const moveNoteToKnowledge = async (
+	token: string,
+	note: any,
+	kb: { id: string; name: string }
+) => {
+	// `note` must be the full note fetched via getNoteById (list responses truncate content)
+	const title = note?.title || 'Untitled';
+	const file = new File([note?.data?.content?.md ?? ''], noteFilename(title), {
+		type: 'text/markdown'
+	});
+
+	const res = await uploadFile(token, file, { knowledge_id: kb.id }).catch((e) => {
+		toast.error(`${e}`);
+		return null;
+	});
+
+	return !!res;
 };

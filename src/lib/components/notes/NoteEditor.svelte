@@ -32,7 +32,6 @@
 	import { WEBUI_BASE_URL } from '$lib/constants';
 	import { getFileById, uploadFile } from '$lib/apis/files';
 	import { generateOpenAIChatCompletion } from '$lib/apis/openai';
-	import { getKnowledgeBases } from '$lib/apis/knowledge';
 
 	import {
 		config,
@@ -46,7 +45,7 @@
 		pinnedNotes
 	} from '$lib/stores';
 
-	import { downloadPdf } from './utils';
+	import { downloadPdf, loadWritableKnowledgeBases } from './utils';
 
 	import Chat from '$lib/components/chat/Chat.svelte';
 
@@ -78,6 +77,7 @@
 	import FilesOverlay from '../chat/MessageInput/FilesOverlay.svelte';
 	import RecordMenu from './RecordMenu.svelte';
 	import NoteMenu from './Notes/NoteMenu.svelte';
+	import MoveNoteToKnowledgeDialog from './Notes/MoveNoteToKnowledgeDialog.svelte';
 	import EllipsisHorizontal from '../icons/EllipsisHorizontal.svelte';
 	import Sparkles from '../icons/Sparkles.svelte';
 	import Tooltip from '../common/Tooltip.svelte';
@@ -866,60 +866,7 @@ ${content}
 	};
 
 	const loadKnowledgeBases = async () => {
-		const writable = [];
-		let page = 1;
-		let fetched = 0;
-
-		while (page <= 20) {
-			const res = await getKnowledgeBases(localStorage.token, page).catch(() => null);
-			if (!res?.items?.length) {
-				break;
-			}
-
-			for (const kb of res.items) {
-				if (kb.write_access) {
-					writable.push(kb);
-				}
-			}
-
-			fetched += res.items.length;
-			if (res.total && fetched >= res.total) {
-				break;
-			}
-
-			page += 1;
-		}
-
-		knowledgeBases = writable;
-	};
-
-	const moveToKnowledgeHandler = async (kb: { id: string; name: string } | null) => {
-		if (!kb) {
-			return;
-		}
-
-		// Drop any pending metadata debounce so it can't fire after the note is deleted
-		if (debounceTimeout) {
-			clearTimeout(debounceTimeout);
-			debounceTimeout = null;
-		}
-
-		const title = note?.title === '' ? $i18n.t('Untitled') : note.title;
-		const filename =
-			`${title.replace(/[/\\:*?"<>|]/g, '-').slice(0, 200) || 'Untitled'}.md` as string;
-		const file = new File([note?.data?.content?.md ?? ''], filename, { type: 'text/markdown' });
-
-		const res = await uploadFile(localStorage.token, file, { knowledge_id: kb.id }).catch((e) => {
-			toast.error(`${e}`);
-			return null;
-		});
-
-		if (res) {
-			toast.success($i18n.t('Note moved to {{name}}', { name: kb.name }));
-			await deleteNoteHandler(note.id);
-		} else {
-			toast.error($i18n.t('Failed to move note to knowledge base'));
-		}
+		knowledgeBases = await loadWritableKnowledgeBases(localStorage.token);
 	};
 
 	const onDragOver = (e) => {
@@ -1107,20 +1054,19 @@ ${content}
 	</div>
 </DeleteConfirmDialog>
 
-<DeleteConfirmDialog
+<MoveNoteToKnowledgeDialog
 	bind:show={showMoveConfirm}
-	title={$i18n.t('Move note to "{{name}}"?', { name: moveTargetKb?.name })}
-	on:confirm={() => {
-		showMoveConfirm = false;
-		moveToKnowledgeHandler(moveTargetKb);
+	bind:kb={moveTargetKb}
+	noteId={note?.id}
+	redirectToNotes={true}
+	on:begin={() => {
+		// Drop any pending metadata debounce so it can't fire after the note is deleted
+		if (debounceTimeout) {
+			clearTimeout(debounceTimeout);
+			debounceTimeout = null;
+		}
 	}}
->
-	<div class=" text-sm text-gray-500">
-		{$i18n.t('This will copy the note to {{name}} as a markdown file and delete this note.', {
-			name: moveTargetKb?.name
-		})}
-	</div>
-</DeleteConfirmDialog>
+/>
 
 <div class="w-full h-full flex">
 	<div class="h-full flex flex-col min-w-0 flex-1 relative">

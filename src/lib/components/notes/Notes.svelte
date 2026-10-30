@@ -38,8 +38,7 @@
 		getPinnedNoteList
 	} from '$lib/apis/notes';
 	import { capitalizeFirstLetter, copyToClipboard, formatNumber, getTimeRange } from '$lib/utils';
-	import { uploadFile } from '$lib/apis/files';
-	import { getKnowledgeBases } from '$lib/apis/knowledge';
+	import { loadWritableKnowledgeBases } from './utils';
 	import { downloadPdf, createNoteHandler } from './utils';
 
 	import EllipsisHorizontal from '../icons/EllipsisHorizontal.svelte';
@@ -49,6 +48,7 @@
 	import Spinner from '../common/Spinner.svelte';
 	import Tooltip from '../common/Tooltip.svelte';
 	import NoteMenu from './Notes/NoteMenu.svelte';
+	import MoveNoteToKnowledgeDialog from './Notes/MoveNoteToKnowledgeDialog.svelte';
 	import ProfileImage from '$lib/components/chat/Messages/ProfileImage.svelte';
 	import FilesOverlay from '../chat/MessageInput/FilesOverlay.svelte';
 	import XMark from '../icons/XMark.svelte';
@@ -128,69 +128,7 @@
 	};
 
 	const loadKnowledgeBases = async () => {
-		const writable = [];
-		let page = 1;
-		let fetched = 0;
-
-		while (page <= 20) {
-			const res = await getKnowledgeBases(localStorage.token, page).catch(() => null);
-			if (!res?.items?.length) {
-				break;
-			}
-
-			for (const kb of res.items) {
-				if (kb.write_access) {
-					writable.push(kb);
-				}
-			}
-
-			fetched += res.items.length;
-			if (res.total && fetched >= res.total) {
-				break;
-			}
-
-			page += 1;
-		}
-
-		knowledgeBases = writable;
-	};
-
-	const moveToKnowledgeHandler = async (kb: { id: string; name: string } | null) => {
-		if (!kb || !selectedNote) {
-			return;
-		}
-
-		openNoteMenuId = null;
-
-		// The list response truncates note content, so fetch the full note first
-		const note = await getNoteById(localStorage.token, selectedNote.id).catch((error) => {
-			toast.error(`${error}`);
-			return null;
-		});
-
-		if (!note) return;
-
-		if (!note.write_access) {
-			toast.error($i18n.t('You do not have write access to this note'));
-			return;
-		}
-
-		const title = note?.title === '' ? $i18n.t('Untitled') : note.title;
-		const filename =
-			`${title.replace(/[/\\:*?"<>|]/g, '-').slice(0, 200) || 'Untitled'}.md` as string;
-		const file = new File([note?.data?.content?.md ?? ''], filename, { type: 'text/markdown' });
-
-		const res = await uploadFile(localStorage.token, file, { knowledge_id: kb.id }).catch((e) => {
-			toast.error(`${e}`);
-			return null;
-		});
-
-		if (res) {
-			toast.success($i18n.t('Note moved to {{name}}', { name: kb.name }));
-			await deleteNoteHandler(note.id);
-		} else {
-			toast.error($i18n.t('Failed to move note to knowledge base'));
-		}
+		knowledgeBases = await loadWritableKnowledgeBases(localStorage.token);
 	};
 
 	const inputFilesHandler = async (inputFiles: File[]) => {
@@ -484,20 +422,17 @@
 			</div>
 		</DeleteConfirmDialog>
 
-		<DeleteConfirmDialog
+		<MoveNoteToKnowledgeDialog
 			bind:show={showMoveConfirm}
-			title={$i18n.t('Move note to "{{name}}"?', { name: moveTargetKb?.name })}
-			on:confirm={() => {
-				showMoveConfirm = false;
-				moveToKnowledgeHandler(moveTargetKb);
+			bind:kb={moveTargetKb}
+			noteId={selectedNote?.id}
+			on:begin={() => {
+				openNoteMenuId = null;
 			}}
-		>
-			<div class=" text-sm text-gray-500 truncate">
-				{$i18n.t('This will copy the note to {{name}} as a markdown file and delete this note.', {
-					name: moveTargetKb?.name
-				})}
-			</div>
-		</DeleteConfirmDialog>
+			on:moved={() => {
+				init();
+			}}
+		/>
 
 		<div class="flex items-center gap-0.5 md:gap-1 mb-1">
 			{#if $mobile}
