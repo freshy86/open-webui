@@ -19,11 +19,11 @@ Open WebUI is a self-hosted AI chat interface. It is a monorepo with two apps:
 
 ## Environment requirements
 
-| Tool | Version |
-| --- | --- |
-| Python | 3.11 or 3.12 only (**3.13 is not supported**; `requires-python = ">= 3.11, < 3.13.0a1"`) |
-| Node.js | 22.x (engines allow 18.13–22) |
-| npm | >= 6 |
+| Tool    | Version                                                                                  |
+| ------- | ---------------------------------------------------------------------------------------- |
+| Python  | 3.11 or 3.12 only (**3.13 is not supported**; `requires-python = ">= 3.11, < 3.13.0a1"`) |
+| Node.js | 22.x (engines allow 18.13–22)                                                            |
+| npm     | >= 6                                                                                     |
 
 Dependency pins in `pyproject.toml` are deliberate — comments there flag versions that must not be bumped (e.g. `aiohttp`, `aiodns`, `preshed`, `pyarrow`). Do not "helpfully" update them.
 
@@ -72,23 +72,23 @@ sh dev.sh            # uvicorn with --reload at http://localhost:8080
 
 ### Frontend (repo root)
 
-| Command | What it does |
-| --- | --- |
-| `npm run build` | Production build (Vite, 12 GB heap) |
-| `npm run check` | `svelte-check` type checking — run this after TS/Svelte changes |
-| `npm run lint:frontend` | ESLint with `--fix` |
-| `npm run format` | Prettier over js/ts/svelte/css/md/html/json |
-| `npm run test:frontend` | Vitest unit tests |
+| Command                             | What it does                                                         |
+| ----------------------------------- | -------------------------------------------------------------------- |
+| `npm run build`                     | Production build (Vite, 12 GB heap)                                  |
+| `npm run check`                     | `svelte-check` type checking — run this after TS/Svelte changes      |
+| `npm run lint:frontend`             | ESLint with `--fix`                                                  |
+| `npm run format`                    | Prettier over js/ts/svelte/css/md/html/json                          |
+| `npm run test:frontend`             | Vitest unit tests                                                    |
 | `npm run i18n:parse` / `i18n:check` | Extract/validate i18n keys (CI runs these and requires a clean tree) |
-| `npm run dev` / `dev:5050` | Dev server on 5173 / 5050 |
+| `npm run dev` / `dev:5050`          | Dev server on 5173 / 5050                                            |
 
 ### Backend (`backend/`, venv active)
 
-| Command | What it does |
-| --- | --- |
-| `ruff format .` | Formatter — **CI enforces `ruff format --check`**, so run it before finishing |
-| `ruff check .` | Linter (CI runs `ruff check --select=F --ignore=F401,F403,F405,F541,F811,F841`) |
-| `uvicorn open_webui.main:app --reload --port 8080` | What `sh dev.sh` runs |
+| Command                                            | What it does                                                                    |
+| -------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `ruff format .`                                    | Formatter — **CI enforces `ruff format --check`**, so run it before finishing   |
+| `ruff check .`                                     | Linter (CI runs `ruff check --select=F --ignore=F401,F403,F405,F541,F811,F841`) |
+| `uvicorn open_webui.main:app --reload --port 8080` | What `sh dev.sh` runs                                                           |
 
 Python style: line length **120**, **single quotes**, isort-compatible imports (`ruff lint` rules `E,F,W,I,UP,C90,Q,ICN`), `datetime` imported as `dt`, no `from ast` / `from datetime` imports. Formatting is handled by Ruff (the `black` config in `pyproject.toml` is legacy; `black` ships only as a runtime dependency for code execution).
 
@@ -131,12 +131,12 @@ Before touching core code for a user request, check whether the existing addon m
 
 ### Runtime plugin mechanisms (no code changes needed)
 
-| Mechanism | Where managed | Hook class | Use for |
-| --- | --- | --- | --- |
-| **Functions** | Admin Panel → Functions (DB-stored) | `Pipe` / `Filter` / `Action` / `Event` | Custom model providers, inlet/outlet/stream message middleware, message buttons, lifecycle events |
-| **Tools** | Workspace → Tools (DB-stored) | `Tools` class, methods → tool specs | Abilities the LLM can call (live data, external APIs) |
-| **Tool servers / MCP** | Admin → Settings → Tool Servers | — | Out-of-process tools via OpenAPI spec or MCP (HTTP-only, no stdio) |
-| **Functions/Tools/Skills version history** | per-plugin | — | This fork snapshots every save (`*_history` tables); diff/rollback after upgrades |
+| Mechanism                                  | Where managed                       | Hook class                             | Use for                                                                                           |
+| ------------------------------------------ | ----------------------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| **Functions**                              | Admin Panel → Functions (DB-stored) | `Pipe` / `Filter` / `Action` / `Event` | Custom model providers, inlet/outlet/stream message middleware, message buttons, lifecycle events |
+| **Tools**                                  | Workspace → Tools (DB-stored)       | `Tools` class, methods → tool specs    | Abilities the LLM can call (live data, external APIs)                                             |
+| **Tool servers / MCP**                     | Admin → Settings → Tool Servers     | —                                      | Out-of-process tools via OpenAPI spec or MCP (HTTP-only, no stdio)                                |
+| **Functions/Tools/Skills version history** | per-plugin                          | —                                      | This fork snapshots every save (`*_history` tables); diff/rollback after upgrades                 |
 
 Key files: `backend/open_webui/utils/plugin.py` (loader, frontmatter, hot-reload), `backend/open_webui/functions.py` (hook dispatch), `backend/open_webui/models/functions.py` / `models/tools.py` (DB + CRUD), `backend/open_webui/routers/functions.py` / `routers/tools.py` (admin API), `backend/open_webui/utils/mcp/` (MCP client). Docs: https://docs.openwebui.com/features/extensibility/plugin/
 
@@ -185,6 +185,7 @@ sudo docker buildx build --platform linux/arm64 --load \
 ```
 
 Notes:
+
 - `--load` is required or the finished image never lands in the local store (buildx completes "successfully" without it).
 - Variants via build args: `USE_SLIM=true`, `USE_CUDA=true`, `USE_OLLAMA=true` (see Dockerfile header).
 - The image bundles the built frontend; the container serves everything on port 8080 (`bash start.sh`).
