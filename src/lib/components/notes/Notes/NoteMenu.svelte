@@ -8,7 +8,9 @@
 	import Switch from '$lib/components/common/Switch.svelte';
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
 	import Download from '$lib/components/icons/Download.svelte';
+	import Database from '$lib/components/icons/Database.svelte';
 	import GarbageBin from '$lib/components/icons/GarbageBin.svelte';
+	import { decodeString } from '$lib/utils';
 	import DocumentDuplicate from '$lib/components/icons/DocumentDuplicate.svelte';
 	import Share from '$lib/components/icons/Share.svelte';
 	import Link from '$lib/components/icons/Link.svelte';
@@ -28,6 +30,8 @@
 	export let onPin = null;
 	export let isPinned = false;
 	export let onUploadFiles = null;
+	export let knowledgeBases: { id: string; name: string; description?: string }[] = [];
+	export let onMoveToKnowledge: ((kb: any) => void) | null = null;
 	export let showAutoFormat = false;
 	export let autoFormat = true;
 
@@ -127,6 +131,29 @@
 					<CloudArrowUp className="size-3.5" strokeWidth="2" />
 					<div class="flex items-center">{$i18n.t('Upload files')}</div>
 				</button>
+			{/if}
+
+			{#if onMoveToKnowledge && knowledgeBases.length > 0}
+				<DropdownSub contentClass="select-none z-50 max-h-64 overflow-y-auto scrollbar-thin">
+					<button
+						slot="trigger"
+						class="flex h-[1.6875rem] w-full cursor-pointer items-center gap-2 rounded-xl bg-transparent px-2 text-[0.8125rem] hover:text-gray-900 dark:hover:text-gray-100"
+					>
+						<Database className="size-3.5" strokeWidth="2" />
+						<div class="flex items-center">{$i18n.t('Move to Knowledge')}</div>
+					</button>
+
+					{#each knowledgeBases as kb (kb.id)}
+						<button
+							class="select-none flex h-[1.6875rem] w-full cursor-pointer items-center gap-2 rounded-xl bg-transparent px-2 text-[0.8125rem] hover:text-gray-900 dark:hover:text-gray-100"
+							on:click={() => {
+								onMoveToKnowledge?.(kb);
+							}}
+						>
+							<div class="flex items-center line-clamp-1">{decodeString(kb?.name)}</div>
+						</button>
+					{/each}
+				</DropdownSub>
 			{/if}
 
 			{#if onCopyLink || onCopyToClipboard}

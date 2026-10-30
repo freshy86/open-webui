@@ -32,6 +32,7 @@
 	import { WEBUI_BASE_URL } from '$lib/constants';
 	import { getFileById, uploadFile } from '$lib/apis/files';
 	import { generateOpenAIChatCompletion } from '$lib/apis/openai';
+	import { getKnowledgeBases } from '$lib/apis/knowledge';
 
 	import {
 		config,
@@ -181,6 +182,10 @@
 	let showDeleteConfirm = false;
 	let showAccessControlModal = false;
 
+	let knowledgeBases: { id: string; name: string }[] = [];
+	let showMoveConfirm = false;
+	let moveTargetKb: { id: string; name: string } | null = null;
+
 	let ignoreBlur = false;
 	let titleInputFocused = false;
 	let titleGenerating = false;
@@ -221,6 +226,10 @@
 		} else {
 			goto('/');
 			return;
+		}
+
+		if (note?.write_access) {
+			loadKnowledgeBases();
 		}
 
 		loading = false;
@@ -856,6 +865,63 @@ ${content}
 		}
 	};
 
+	const loadKnowledgeBases = async () => {
+		const writable = [];
+		let page = 1;
+		let fetched = 0;
+
+		while (page <= 20) {
+			const res = await getKnowledgeBases(localStorage.token, page).catch(() => null);
+			if (!res?.items?.length) {
+				break;
+			}
+
+			for (const kb of res.items) {
+				if (kb.write_access) {
+					writable.push(kb);
+				}
+			}
+
+			fetched += res.items.length;
+			if (res.total && fetched >= res.total) {
+				break;
+			}
+
+			page += 1;
+		}
+
+		knowledgeBases = writable;
+	};
+
+	const moveToKnowledgeHandler = async (kb: { id: string; name: string } | null) => {
+		if (!kb) {
+			return;
+		}
+
+		// Drop any pending metadata debounce so it can't fire after the note is deleted
+		if (debounceTimeout) {
+			clearTimeout(debounceTimeout);
+			debounceTimeout = null;
+		}
+
+		const title = note?.title === '' ? $i18n.t('Untitled') : note.title;
+		const filename =
+			`${title.replace(/[/\\:*?"<>|]/g, '-').slice(0, 200) || 'Untitled'}.md` as string;
+		const file = new File([note?.data?.content?.md ?? ''], filename, { type: 'text/markdown' });
+
+		const res = await uploadFile(localStorage.token, file, { knowledge_id: kb.id }).catch((e) => {
+			toast.error(`${e}`);
+			return null;
+		});
+
+		if (res) {
+			toast.success($i18n.t('Note moved to {{name}}', { name: kb.name }));
+			await deleteNoteHandler(note.id);
+		} else {
+			toast.error($i18n.t('Failed to move note to knowledge base'));
+		}
+	};
+
 	const onDragOver = (e) => {
 		e.preventDefault();
 
@@ -1038,6 +1104,21 @@ ${content}
 >
 	<div class=" text-sm text-gray-500">
 		{$i18n.t('This will delete')} <span class="  font-normal">{note.title}</span>.
+	</div>
+</DeleteConfirmDialog>
+
+<DeleteConfirmDialog
+	bind:show={showMoveConfirm}
+	title={$i18n.t('Move note to "{{name}}"?', { name: moveTargetKb?.name })}
+	on:confirm={() => {
+		showMoveConfirm = false;
+		moveToKnowledgeHandler(moveTargetKb);
+	}}
+>
+	<div class=" text-sm text-gray-500">
+		{$i18n.t('This will copy the note to {{name}} as a markdown file and delete this note.', {
+			name: moveTargetKb?.name
+		})}
 	</div>
 </DeleteConfirmDialog>
 
@@ -1235,6 +1316,11 @@ ${content}
 									bind:autoFormat
 									showAutoFormat={note?.write_access ?? false}
 									onUploadFiles={note?.write_access ? uploadNoteFilesHandler : null}
+									knowledgeBases={note?.write_access ? knowledgeBases : []}
+									onMoveToKnowledge={(kb: { id: string; name: string }) => {
+										moveTargetKb = kb;
+										showMoveConfirm = true;
+									}}
 									onDownload={(type) => {
 										downloadHandler(type);
 									}}
