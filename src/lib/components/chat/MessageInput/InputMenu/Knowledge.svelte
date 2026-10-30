@@ -17,6 +17,12 @@
 
 	export let onSelect = (e) => {};
 
+	// When true, only show knowledge bases the user can write to (used by
+	// move-note-to-knowledge). Pages with no writable KBs are skipped automatically.
+	export let writeAccessOnly = false;
+	// When true, hide the per-KB file expansion (only collections are selectable)
+	export let collectionsOnly = false;
+
 	let loaded = false;
 	let selectedIdx = 0;
 	let query = '';
@@ -152,7 +158,19 @@
 
 		if (res) {
 			total = res.total;
-			const pageItems = res.items;
+			const rawPageItems = res.items ?? [];
+
+			let pageItems = rawPageItems;
+			if (writeAccessOnly) {
+				pageItems = rawPageItems.filter((item: { write_access?: boolean }) => item.write_access);
+
+				// This page had KBs but none writable - skip ahead until one has
+				if (rawPageItems.length > 0 && pageItems.length === 0) {
+					page += 1;
+					itemsLoading = false;
+					return getItemsPage(activeRequestId);
+				}
+			}
 
 			if (items) {
 				const existingIds = new Set(items.map((item) => item.id));
@@ -164,8 +182,11 @@
 
 			// The response reports the full count, so the end of the list is known without
 			// probing for an empty page - otherwise a list shorter than one page would
-			// immediately request the next one.
-			allItemsLoaded = (pageItems ?? []).length === 0 || items.length >= (total ?? 0);
+			// immediately request the next one. With write filtering the total is over
+			// all KBs, so end detection must rely on the raw page size instead.
+			allItemsLoaded = writeAccessOnly
+				? rawPageItems.length === 0
+				: rawPageItems.length === 0 || items.length >= (total ?? 0);
 		}
 
 		itemsLoading = false;
@@ -241,29 +262,31 @@
 							</div>
 						</button>
 
-						<Tooltip content={$i18n.t('Show Files')} placement="top">
-							<button
-								aria-label={$i18n.t('Show Files')}
-								type="button"
-								class=" ml-2 opacity-50 hover:opacity-100 transition"
-								on:click={() => {
-									if (selectedItem && selectedItem.id === item.id) {
-										selectedItem = null;
-									} else {
-										selectedItem = item;
-									}
-								}}
-							>
-								{#if selectedItem && selectedItem.id === item.id}
-									<ChevronDown className="size-3" />
-								{:else}
-									<ChevronRight className="size-3" />
-								{/if}
-							</button>
-						</Tooltip>
+						{#if !collectionsOnly}
+							<Tooltip content={$i18n.t('Show Files')} placement="top">
+								<button
+									aria-label={$i18n.t('Show Files')}
+									type="button"
+									class=" ml-2 opacity-50 hover:opacity-100 transition"
+									on:click={() => {
+										if (selectedItem && selectedItem.id === item.id) {
+											selectedItem = null;
+										} else {
+											selectedItem = item;
+										}
+									}}
+								>
+									{#if selectedItem && selectedItem.id === item.id}
+										<ChevronDown className="size-3" />
+									{:else}
+										<ChevronRight className="size-3" />
+									{/if}
+								</button>
+							</Tooltip>
+						{/if}
 					</div>
 
-					{#if selectedItem && selectedItem.id === item.id}
+					{#if !collectionsOnly && selectedItem && selectedItem.id === item.id}
 						<div class="pl-3 mb-1 flex flex-col gap-0.5">
 							{#if selectedFileItems === null && selectedFileItemsTotal === null}
 								<div class=" py-1 flex justify-center">

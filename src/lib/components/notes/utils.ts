@@ -2,7 +2,6 @@ import DOMPurify from 'dompurify';
 import { toast } from 'svelte-sonner';
 
 import { createNewNote } from '$lib/apis/notes';
-import { getKnowledgeBases } from '$lib/apis/knowledge';
 import { uploadFile } from '$lib/apis/files';
 import { safeImageUrl } from '$lib/utils/safeImageUrl';
 
@@ -203,34 +202,6 @@ export const createNoteHandler = async (title: string, md?: string, html?: strin
 	if (res) {
 		return res;
 	}
-};
-
-export const loadWritableKnowledgeBases = async (token: string) => {
-	const writable = [];
-	let page = 1;
-	let fetched = 0;
-
-	while (page <= 20) {
-		const res = await getKnowledgeBases(token, page).catch(() => null);
-		if (!res?.items?.length) {
-			break;
-		}
-
-		for (const kb of res.items) {
-			if (kb.write_access) {
-				writable.push(kb);
-			}
-		}
-
-		fetched += res.items.length;
-		if (res.total && fetched >= res.total) {
-			break;
-		}
-
-		page += 1;
-	}
-
-	return writable;
 };
 
 export const noteFilename = (title: string) => {

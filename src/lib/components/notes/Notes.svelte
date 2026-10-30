@@ -38,7 +38,6 @@
 		getPinnedNoteList
 	} from '$lib/apis/notes';
 	import { capitalizeFirstLetter, copyToClipboard, formatNumber, getTimeRange } from '$lib/utils';
-	import { loadWritableKnowledgeBases } from './utils';
 	import { downloadPdf, createNoteHandler } from './utils';
 
 	import EllipsisHorizontal from '../icons/EllipsisHorizontal.svelte';
@@ -67,7 +66,6 @@
 	let selectedNote = null;
 	let openNoteMenuId: string | null = null;
 	let showDeleteConfirm = false;
-	let knowledgeBases: { id: string; name: string }[] = [];
 	let showMoveConfirm = false;
 	let moveTargetKb: { id: string; name: string } | null = null;
 	let shiftKey = false;
@@ -125,10 +123,6 @@
 			pinnedNotes.set(await getPinnedNoteList(localStorage.token).catch(() => []));
 			init();
 		}
-	};
-
-	const loadKnowledgeBases = async () => {
-		knowledgeBases = await loadWritableKnowledgeBases(localStorage.token);
 	};
 
 	const inputFilesHandler = async (inputFiles: File[]) => {
@@ -326,8 +320,6 @@
 		displayOption = localStorage?.noteDisplayOption ?? null;
 
 		loaded = true;
-
-		loadKnowledgeBases();
 
 		const dropzoneElement = document.getElementById('notes-container');
 		dropzoneElement?.addEventListener('dragover', onDragOver);
@@ -723,9 +715,6 @@
 																? () => accessModal.open(note.id)
 																: null}
 															show={openNoteMenuId === note.id}
-															knowledgeBases={note.user_id === $user?.id || $user?.role === 'admin'
-																? knowledgeBases
-																: []}
 															onMoveToKnowledge={(kb: { id: string; name: string }) => {
 																selectedNote = note;
 																moveTargetKb = kb;
@@ -828,9 +817,6 @@
 															$user?.role === 'admin'
 																? () => accessModal.open(note.id)
 																: null}
-															knowledgeBases={note.user_id === $user?.id || $user?.role === 'admin'
-																? knowledgeBases
-																: []}
 															onMoveToKnowledge={(kb: { id: string; name: string }) => {
 																selectedNote = note;
 																moveTargetKb = kb;

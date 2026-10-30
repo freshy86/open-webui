@@ -10,7 +10,7 @@
 	import Download from '$lib/components/icons/Download.svelte';
 	import Database from '$lib/components/icons/Database.svelte';
 	import GarbageBin from '$lib/components/icons/GarbageBin.svelte';
-	import { decodeString } from '$lib/utils';
+	import Knowledge from '$lib/components/chat/MessageInput/InputMenu/Knowledge.svelte';
 	import DocumentDuplicate from '$lib/components/icons/DocumentDuplicate.svelte';
 	import Share from '$lib/components/icons/Share.svelte';
 	import Link from '$lib/components/icons/Link.svelte';
@@ -30,7 +30,6 @@
 	export let onPin = null;
 	export let isPinned = false;
 	export let onUploadFiles = null;
-	export let knowledgeBases: { id: string; name: string; description?: string }[] = [];
 	export let onMoveToKnowledge: ((kb: any) => void) | null = null;
 	export let showAutoFormat = false;
 	export let autoFormat = true;
@@ -133,8 +132,11 @@
 				</button>
 			{/if}
 
-			{#if onMoveToKnowledge && knowledgeBases.length > 0}
-				<DropdownSub contentClass="select-none z-50 max-h-64 overflow-y-auto scrollbar-thin">
+			{#if onMoveToKnowledge}
+				<DropdownSub
+					contentClass="select-none rounded-2xl p-1 z-50 bg-white dark:bg-gray-850 dark:text-white shadow-lg border border-gray-100 dark:border-gray-800 flex flex-col max-h-72 w-64 overflow-hidden"
+					maxWidth={260}
+				>
 					<button
 						slot="trigger"
 						class="flex h-[1.6875rem] w-full cursor-pointer items-center gap-2 rounded-xl bg-transparent px-2 text-[0.8125rem] hover:text-gray-900 dark:hover:text-gray-100"
@@ -143,16 +145,15 @@
 						<div class="flex items-center">{$i18n.t('Move to Knowledge')}</div>
 					</button>
 
-					{#each knowledgeBases as kb (kb.id)}
-						<button
-							class="select-none flex h-[1.6875rem] w-full cursor-pointer items-center gap-2 rounded-xl bg-transparent px-2 text-[0.8125rem] hover:text-gray-900 dark:hover:text-gray-100"
-							on:click={() => {
-								onMoveToKnowledge?.(kb);
-							}}
-						>
-							<div class="flex items-center line-clamp-1">{decodeString(kb?.name)}</div>
-						</button>
-					{/each}
+					<Knowledge
+						collectionsOnly={true}
+						writeAccessOnly={true}
+						onSelect={(e) => {
+							if (e.type === 'collection') {
+								onMoveToKnowledge?.(e);
+							}
+						}}
+					/>
 				</DropdownSub>
 			{/if}
 

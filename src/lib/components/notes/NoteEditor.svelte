@@ -45,7 +45,7 @@
 		pinnedNotes
 	} from '$lib/stores';
 
-	import { downloadPdf, loadWritableKnowledgeBases } from './utils';
+	import { downloadPdf } from './utils';
 
 	import Chat from '$lib/components/chat/Chat.svelte';
 
@@ -182,7 +182,6 @@
 	let showDeleteConfirm = false;
 	let showAccessControlModal = false;
 
-	let knowledgeBases: { id: string; name: string }[] = [];
 	let showMoveConfirm = false;
 	let moveTargetKb: { id: string; name: string } | null = null;
 
@@ -226,10 +225,6 @@
 		} else {
 			goto('/');
 			return;
-		}
-
-		if (note?.write_access) {
-			loadKnowledgeBases();
 		}
 
 		loading = false;
@@ -865,10 +860,6 @@ ${content}
 		}
 	};
 
-	const loadKnowledgeBases = async () => {
-		knowledgeBases = await loadWritableKnowledgeBases(localStorage.token);
-	};
-
 	const onDragOver = (e) => {
 		e.preventDefault();
 
@@ -1262,11 +1253,12 @@ ${content}
 									bind:autoFormat
 									showAutoFormat={note?.write_access ?? false}
 									onUploadFiles={note?.write_access ? uploadNoteFilesHandler : null}
-									knowledgeBases={note?.write_access ? knowledgeBases : []}
-									onMoveToKnowledge={(kb: { id: string; name: string }) => {
-										moveTargetKb = kb;
-										showMoveConfirm = true;
-									}}
+									onMoveToKnowledge={note?.write_access
+										? (kb: { id: string; name: string }) => {
+												moveTargetKb = kb;
+												showMoveConfirm = true;
+											}
+										: null}
 									onDownload={(type) => {
 										downloadHandler(type);
 									}}
