@@ -1,12 +1,14 @@
 <script lang="ts">
-	import { createEventDispatcher } from 'svelte';
+	import { createEventDispatcher, getContext } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
 
-	import { i18n, pinnedNotes } from '$lib/stores';
+	import { pinnedNotes } from '$lib/stores';
 	import { getNoteById, deleteNoteById, getPinnedNoteList } from '$lib/apis/notes';
 	import DeleteConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
 	import { moveNoteToKnowledge } from '../utils';
+
+	const i18n = getContext<typeof import('$lib/i18n').default>('i18n');
 
 	export let show = false;
 	export let noteId: string | null = null;
