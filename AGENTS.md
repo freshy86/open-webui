@@ -182,6 +182,10 @@ Key files: `backend/open_webui/utils/plugin.py` (loader, frontmatter, hot-reload
 
 **Do not cut a release-merge branch from ad-hoc git commands — use the `merge-release-tag` skill** (`.opencode/skills/merge-release-tag/SKILL.md`). It creates a new `<version>_modified` branch from the latest fork branch and merges the latest upstream release tag. It auto-resolves only purely additive conflicts (both sides added — union, fork keys/code preserved) and escalates every real conflict to the user instead of picking a side.
 
+## Fork feature docs
+
+**Fork-only user-facing features are documented in `.opencode/fork/`** — `INDEX.md` (always loaded as base context) lists each feature with a one-line summary, and `features/<id>.md` holds the full detail (read it on demand). When you add a fork feature: create the detail file, add a row to `INDEX.md`, and update AGENTS.md only if the feature changes how agents should work.
+
 ## Docker image — build & publish (this fork)
 
 The fork publishes a private arm64 image to `ghcr.io/freshy86/open-webui`, tagged with the **currently checked-out branch name** (whatever `git branch --show-current` returns). CI does this automatically for `main`/`dev`/`v*` tags; for other branches, build and push locally.
