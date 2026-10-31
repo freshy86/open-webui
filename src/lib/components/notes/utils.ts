@@ -1,7 +1,8 @@
 import DOMPurify from 'dompurify';
 import { toast } from 'svelte-sonner';
 
-import { createNewNote } from '$lib/apis/notes';
+import { createNewNote, deleteNoteById, getNoteById, getPinnedNoteList } from '$lib/apis/notes';
+import { pinnedNotes } from '$lib/stores';
 import { uploadFile } from '$lib/apis/files';
 import { safeImageUrl } from '$lib/utils/safeImageUrl';
 import { marked } from 'marked';
@@ -283,6 +284,64 @@ export const moveNoteToKnowledge = async (
 	});
 
 	return !!res;
+};
+
+// The full move flow, shared by the notes overview and the editor dialog so the
+// sequence (persist -> fetch -> upload -> delete) stays identical everywhere.
+export const moveNoteToKnowledgeFlow = async (
+	token: string,
+	noteId: string,
+	kb: { id: string; name: string },
+	options: {
+		// Persist the latest editor state before the note is fetched, so the
+		// copy that lands in the knowledge base is not stale. Best effort:
+		// a failing flush must not block the move.
+		onBeforeMove?: () => Promise<void>;
+		// Called once the note was moved and deleted server-side.
+		onMoved: (noteId: string) => void;
+		t: (key: string, vars?: Record<string, unknown>) => string;
+	}
+): Promise<boolean> => {
+	const { onBeforeMove, onMoved, t } = options;
+
+	if (onBeforeMove) {
+		await onBeforeMove();
+	}
+
+	// The overview list truncates note content, so always fetch the full note
+	const note = await getNoteById(token, noteId).catch((error) => {
+		toast.error(`${error}`);
+		return null;
+	});
+
+	if (!note) {
+		return false;
+	}
+
+	if (!note.write_access) {
+		toast.error(t('You do not have write access to this note'));
+		return false;
+	}
+
+	const moved = await moveNoteToKnowledge(token, note, kb);
+
+	if (!moved) {
+		toast.error(t('Failed to move note to knowledge base'));
+		return false;
+	}
+
+	toast.success(t('Note moved to {{name}}', { name: kb.name }));
+
+	const res = await deleteNoteById(token, note.id).catch(() => null);
+
+	if (!res) {
+		toast.error(t('Failed to delete note'));
+		return false;
+	}
+
+	pinnedNotes.set(await getPinnedNoteList(token).catch(() => []));
+	onMoved(note.id);
+	return true;
 };
 type Tab = Pick<NotePage, 'id' | 'title' | 'parent_id'>;
 

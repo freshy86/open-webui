@@ -194,6 +194,9 @@
 	}
 
 	async function flushActivePage() {
+		// The note no longer exists (moved to knowledge); saving would fail and
+		// block navigation, so any pending state is dropped instead.
+		if (noteRemoved) return;
 		while (pendingFileUploads.size) await Promise.all([...pendingFileUploads]);
 		if (note?.write_access && versionIdx === null && inputElement) await inputElement.flush();
 		if (debounceTimeout || titleInputFocused) {
@@ -358,6 +361,9 @@
 
 	let showMoveConfirm = false;
 	let moveTargetKb: { id: string; name: string } | null = null;
+	// Set once the note was moved to a knowledge base and deleted server-side:
+	// flushing afterwards would 404, fail, and block navigation.
+	let noteRemoved = false;
 
 	let ignoreBlur = false;
 	let titleInputFocused = false;
@@ -1082,12 +1088,26 @@ ${content}
 	bind:kb={moveTargetKb}
 	noteId={note?.id}
 	redirectToNotes={true}
+	onBeforeMove={async () => {
+		// Persist the latest content and title so the copy moved to the
+		// knowledge base is current. Best effort: never block the move.
+		try {
+			await flushActivePage();
+		} catch {
+			// Proceed with the last persisted content.
+		}
+	}}
 	on:begin={() => {
 		// Drop any pending metadata debounce so it can't fire after the note is deleted
 		if (debounceTimeout) {
 			clearTimeout(debounceTimeout);
 			debounceTimeout = null;
 		}
+	}}
+	on:moved={() => {
+		// The note is gone server-side; further flushes would fail and block
+		// navigation to the notes list.
+		noteRemoved = true;
 	}}
 />
 

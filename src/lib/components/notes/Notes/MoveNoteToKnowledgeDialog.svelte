@@ -1,22 +1,21 @@
 <script lang="ts">
 	import { createEventDispatcher, getContext } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { toast } from 'svelte-sonner';
 
-	import { pinnedNotes } from '$lib/stores';
-	import { getNoteById, deleteNoteById, getPinnedNoteList } from '$lib/apis/notes';
+	import { moveNoteToKnowledgeFlow } from '../utils';
 	import DeleteConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
-	import { moveNoteToKnowledge } from '../utils';
 
 	const i18n = getContext<typeof import('$lib/i18n').default>('i18n');
+	const dispatch = createEventDispatcher<{ moved: string; begin: undefined }>();
 
 	export let show = false;
 	export let noteId: string | null = null;
 	export let kb: { id: string; name: string } | null = null;
+	// Persist the latest editor state before the note is fetched and moved
+	// (used by the editor; a failing flush must not block the move).
+	export let onBeforeMove: (() => Promise<void>) | undefined;
 	// Navigate back to the notes list after the note is deleted (used by the editor)
 	export let redirectToNotes = false;
-
-	const dispatch = createEventDispatcher<{ moved: string; begin: undefined }>();
 
 	const confirmHandler = async () => {
 		dispatch('begin');
@@ -26,39 +25,14 @@
 			return;
 		}
 
-		// The overview list truncates note content, so always fetch the full note
-		const note = await getNoteById(localStorage.token, noteId).catch((error) => {
-			toast.error(`${error}`);
-			return null;
+		const moved = await moveNoteToKnowledgeFlow(localStorage.token, noteId, kb, {
+			onBeforeMove,
+			onMoved: (id) => dispatch('moved', id),
+			t: (key, vars) => $i18n.t(key, vars)
 		});
 
-		if (!note) {
-			return;
-		}
-
-		if (!note.write_access) {
-			toast.error($i18n.t('You do not have write access to this note'));
-			return;
-		}
-
-		const moved = await moveNoteToKnowledge(localStorage.token, note, kb);
-
-		if (moved) {
-			toast.success($i18n.t('Note moved to {{name}}', { name: kb.name }));
-			const res = await deleteNoteById(localStorage.token, note.id).catch(() => null);
-
-			if (res) {
-				pinnedNotes.set(await getPinnedNoteList(localStorage.token).catch(() => []));
-				dispatch('moved', note.id);
-
-				if (redirectToNotes) {
-					goto('/notes');
-				}
-			} else {
-				toast.error($i18n.t('Failed to delete note'));
-			}
-		} else {
-			toast.error($i18n.t('Failed to move note to knowledge base'));
+		if (moved && redirectToNotes) {
+			goto('/notes');
 		}
 	};
 </script>
