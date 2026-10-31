@@ -180,7 +180,7 @@ Key files: `backend/open_webui/utils/plugin.py` (loader, frontmatter, hot-reload
 
 **Do not sync the fork from ad-hoc git commands — use the `sync-upstream` skill** (`.opencode/skills/sync-upstream/SKILL.md`). It is the single source of truth for syncing with the official `open-webui/open-webui` repo: fetch upstream with all tags, fast-forward only the fork branches that changed upstream, pull all tags, and push the tags. Hard rules: fast-forward only (never force-push, never rewrite diverged branches — skip and report), never touch fork-only branches or the current checkout, and always verify with `git ls-remote` since push output can omit ref-update lines.
 
-**Do not cut a release-merge branch from ad-hoc git commands — use the `merge-release-tag` skill** (`.opencode/skills/merge-release-tag/SKILL.md`). It creates a new `<version>_modified` branch from the latest fork branch and merges the latest upstream release tag. It auto-resolves only purely additive conflicts (both sides added — union, fork keys/code preserved) and escalates every real conflict to the user instead of picking a side.
+**Do not cut a release-merge branch from ad-hoc git commands — use the `merge-release-tag` skill** (`.opencode/skills/merge-release-tag/SKILL.md`). It creates a new `<version>_modified` branch from the latest fork branch and merges the latest upstream release tag. It auto-resolves only purely additive conflicts (both sides added — union, fork keys/code preserved), escalates every real conflict to the user instead of picking a side, and finishes only after `npx vitest run`, `npm run i18n:check`, and `npm run build` all pass (fix any failures before committing — never skip or weaken tests to make a merge pass).
 
 ## Fork feature docs
 

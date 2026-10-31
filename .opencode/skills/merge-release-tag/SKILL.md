@@ -1,6 +1,6 @@
 ---
 name: Merge Release Tag
-description: Create a new _modified branch from the latest fork branch and merge the latest upstream release tag into it, auto-resolving both-sides-added conflicts and asking the user about real conflicts. Use when the user asks to cut a new release branch, merge a release tag into the fork, or sync a _modified branch with a new upstream version.
+description: Create a new _modified branch from the latest fork branch and merge the latest upstream release tag into it, auto-resolving both-sides-added conflicts, asking the user about real conflicts, and running the tests plus build before considering the merge done. Use when the user asks to cut a new release branch, merge a release tag into the fork, or sync a _modified branch with a new upstream version.
 ---
 
 Merge the latest upstream release tag into the latest fork branch, producing a
@@ -93,12 +93,32 @@ manual. **Never silently pick a side on a real conflict.**
 ```sh
 grep -rn '<<<<<<<\|>>>>>>>' src backend/open_webui | grep -v node_modules  # no markers left
 npm run i18n:check        # placeholder/translation validation (CI gate)
+npx vitest run            # all frontend tests, one-shot (see gotcha below)
 npm run build             # authoritative frontend check — run in background, takes ~1-2 min
 ```
 
 If the merge touched backend Python, also `ruff format . && ruff check .`.
-Only commit once the build exits successfully (the only acceptable "error"
-grep hits are page filenames like `pages/_error.svelte.js`).
+
+**Test gotchas:**
+
+- Use `npx vitest run` (one-shot), not `npm run test:frontend` — the watch
+  script can fail with an inotify `ENOSPC` when dev servers are running.
+- When the merge resolves a conflict in `utils.ts` by keeping both sides'
+  exports, check whether each side's exports clash (duplicate names). The
+  fork's `move-note-to-knowledge` feature adds `noteFilename`,
+  `moveNoteToKnowledge`, and `moveNoteToKnowledgeFlow` to
+  `src/lib/components/notes/utils.ts`; upstream may add helpers there too.
+  Duplicate export names are a real conflict, not an auto-resolve.
+- A failing test may point at a fork feature that upstream's merge changed
+  (e.g. an upstream rename of a component or store the fork code depends on).
+  Diagnose the failure, fix the fork code so the feature keeps working with
+  upstream's changes, and re-run the tests — do not skip or weaken a test to
+  make the merge pass.
+
+Only commit once the build exits successfully and the tests pass (the only
+acceptable "error" grep hits in the build log are page filenames like
+`pages/_error.svelte.js`). If tests fail and the fix is not obvious, stop and
+report before committing anything.
 
 ## 6. Commit
 
@@ -115,4 +135,5 @@ user's call. Suggest next steps in the report: push the branch, and
 
 One line each: new branch name and its parent, tag merged, conflict summary
 (N auto-resolved as both-sides-added, M escalated and how each was resolved),
-verification results (i18n + build), and the merge commit hash.
+verification results (tests — pass/fail count, i18n, build), and the merge
+commit hash. Never report a merge as done with failing tests outstanding.
