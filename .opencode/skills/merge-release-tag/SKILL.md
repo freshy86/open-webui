@@ -8,6 +8,16 @@ new `<version>_modified` branch. Run from the repo root. Based on the
 2026-10-31 `v0.12.5` → `v0.12.5_modified` merge (65 conflicts, all
 both-sides-added, auto-resolved).
 
+## Load fork feature context first
+
+Before any git work, read **every file in `.opencode/fork/`** — `INDEX.md` and
+all files under `features/` — and make sure you understand each fork feature
+in detail: what it does, which files it touches, and how it interacts with
+upstream code. This is the baseline context for every conflict decision:
+when a merge hunk involves fork-side code, you must know which feature it
+belongs to and what breaking it would break. Do not skip or skim this step,
+even if the merge looks trivial.
+
 ## 0. Determine "latest"
 
 Do not hardcode names — detect them:
