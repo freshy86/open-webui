@@ -176,6 +176,10 @@ Key files: `backend/open_webui/utils/plugin.py` (loader, frontmatter, hot-reload
 3. Anything isolatable, or where version coupling matters → **external tool server (MCP/OpenAPI)**.
 4. Deployment customization (branding, headers) → env vars (`env.py`, document in `.env.example`) or `static/` mounts.
 
+## Upstream sync (this fork)
+
+**Do not sync the fork from ad-hoc git commands — use the `sync-upstream` skill** (`.opencode/skills/sync-upstream/SKILL.md`). It is the single source of truth for syncing with the official `open-webui/open-webui` repo: fetch upstream with all tags, fast-forward only the fork branches that changed upstream, pull all tags, and push the tags. Hard rules: fast-forward only (never force-push, never rewrite diverged branches — skip and report), never touch fork-only branches or the current checkout, and always verify with `git ls-remote` since push output can omit ref-update lines.
+
 ## Docker image — build & publish (this fork)
 
 The fork publishes a private arm64 image to `ghcr.io/freshy86/open-webui`, tagged with the **currently checked-out branch name** (whatever `git branch --show-current` returns). CI does this automatically for `main`/`dev`/`v*` tags; for other branches, build and push locally.
