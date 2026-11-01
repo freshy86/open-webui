@@ -182,6 +182,8 @@
 
 	let showEventConfirmation = false;
 	let pendingUrlActions: { urls: string[]; call: boolean } | null = null;
+	let urlQuerySubmitPending: string | null = null;
+	let consumedUrlQuery: string | null = null;
 	let eventConfirmationTitle = '';
 	let eventConfirmationMessage = '';
 	let eventConfirmationInput = false;
@@ -263,6 +265,14 @@
 				if (!loading && !modelDefaults) setDefaults();
 			}
 		}
+	}
+
+	// Auto-submit a query passed via the ?q= URL param once a model is available
+	// (models load after mount on a fresh deep-link visit, so submission waits here).
+	$: if (urlQuerySubmitPending !== null && !loading && selectedModels.some((modelId) => modelId)) {
+		const query = urlQuerySubmitPending;
+		urlQuerySubmitPending = null;
+		submitHandler(query);
 	}
 
 	const estimateTokens = (value) => {
@@ -928,6 +938,7 @@
 		await saveControls();
 		if (signal.aborted) return;
 		loading = true;
+		urlQuerySubmitPending = null;
 
 		prompt = '';
 		messageInput?.setText('');
@@ -967,6 +978,7 @@
 		taskIds = null;
 		chatTasks = [];
 		serverContextUsage = null;
+		urlQuerySubmitPending = null;
 		history = {
 			messages: {},
 			currentId: null
@@ -2621,6 +2633,7 @@
 	const initNewChat = async () => {
 		chatLoadController.abort();
 		modelDefaults = null;
+		urlQuerySubmitPending = null;
 		clearTimeout(saveControlsTimer);
 		await saveControls();
 		if ($chatId) terminalContext = null;
@@ -2863,7 +2876,21 @@
 		} else if ($page.url.searchParams.get('q')) {
 			const q = $page.url.searchParams.get('q') ?? '';
 
-			messageInput?.setTextHandler(q);
+			// Consume the query once per component: native replaceState keeps
+			// SvelteKit's page store untouched (so initNewChat is not re-triggered),
+			// but the store's URL can still carry a stale q until the next
+			// navigation — the guard stops archive/delete handlers from resubmitting.
+			if (q !== consumedUrlQuery) {
+				consumedUrlQuery = q;
+
+				// Drop the param so a reload or back navigation cannot resubmit it.
+				const url = new URL(location.href);
+				url.searchParams.delete('q');
+				window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
+
+				messageInput?.setTextHandler(q);
+				urlQuerySubmitPending = q;
+			}
 		}
 
 		selectedModels = selectedModels.map((modelId) =>
