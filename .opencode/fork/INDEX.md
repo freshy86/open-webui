@@ -6,6 +6,7 @@ below is a one-line summary; the full detail lives in `features/<id>.md`.
 | Feature                  | What it does                                                    | Detail                              |
 | ------------------------ | --------------------------------------------------------------- | ----------------------------------- |
 | Move note to knowledge   | Copy a note into a knowledge base as a markdown file, then delete it | [features/move-note-to-knowledge.md](features/move-note-to-knowledge.md) |
+| Temporary chat titles    | Auto-generated titles + browser tab title for temporary chats; "Save Chat" keeps the generated title | [features/temporary-chat-titles.md](features/temporary-chat-titles.md) |
 
 When adding a new fork feature: create `features/<feature-id>.md`, add one row
 here, and update AGENTS.md only if the feature changes how agents should work.
