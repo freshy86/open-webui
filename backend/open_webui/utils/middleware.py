@@ -3546,6 +3546,7 @@ async def background_tasks_handler(ctx):
 
     message = None
     messages = []
+    messages_map = None
 
     if is_saved_chat_id(metadata.get('chat_id')):
         messages_map = await Chats.get_messages_map_by_chat_id(metadata['chat_id'])
@@ -3651,7 +3652,9 @@ async def background_tasks_handler(ctx):
                     except Exception as e:
                         pass
 
-            if is_saved_chat_id(metadata.get('chat_id')):  # Only update titles and tags for saved chats
+            is_temp_chat = is_temporary_chat_id(metadata.get('chat_id'))
+            is_saved_chat = is_saved_chat_id(metadata.get('chat_id'))
+            if is_saved_chat or is_temp_chat:  # Titles for saved and temporary chats; tags for saved chats only
                 if TASKS.TITLE_GENERATION in tasks:
                     user_message = get_last_user_message(messages)
                     if user_message and len(user_message) > 100:
@@ -3691,9 +3694,13 @@ async def background_tasks_handler(ctx):
                                 title = ''
 
                             if not title:
-                                title = replace_skill_mentions_with_labels(messages[0].get('content', user_message))
+                                # Temporary chats include the system prompt in their payload, so fall back to the user message.
+                                title = replace_skill_mentions_with_labels(
+                                    user_message if is_temp_chat else messages[0].get('content', user_message)
+                                )
 
-                            await Chats.update_chat_title_by_id(metadata['chat_id'], title)
+                            if is_saved_chat:
+                                await Chats.update_chat_title_by_id(metadata['chat_id'], title)
 
                             await event_emitter(
                                 {
@@ -3702,10 +3709,19 @@ async def background_tasks_handler(ctx):
                                 }
                             )
 
-                    if title == None and len(messages) == 2 and (not messages_map or len(messages_map) <= 2):
-                        title = replace_skill_mentions_with_labels(messages[0].get('content', user_message))
+                    if title == None and (
+                        (is_saved_chat and len(messages) == 2 and (not messages_map or len(messages_map) <= 2))
+                        # Temporary chats include the system prompt and may lack the assistant placeholder.
+                        or (is_temp_chat and len([m for m in messages if m.get('role') == 'user']) == 1)
+                    ):
+                        # Temporary chats include the system prompt in their payload, so pick the user message.
+                        if is_temp_chat:
+                            title = replace_skill_mentions_with_labels(user_message or '')
+                        else:
+                            title = replace_skill_mentions_with_labels(messages[0].get('content', user_message))
 
-                        await Chats.update_chat_title_by_id(metadata['chat_id'], title)
+                        if is_saved_chat:
+                            await Chats.update_chat_title_by_id(metadata['chat_id'], title)
 
                         await event_emitter(
                             {
@@ -3714,7 +3730,7 @@ async def background_tasks_handler(ctx):
                             }
                         )
 
-                if TASKS.TAGS_GENERATION in tasks and tasks[TASKS.TAGS_GENERATION]:
+                if is_saved_chat and TASKS.TAGS_GENERATION in tasks and tasks[TASKS.TAGS_GENERATION]:
                     res = await generate_chat_tags(
                         request,
                         {

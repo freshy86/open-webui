@@ -4081,6 +4081,18 @@
 		let _chatId = JSON.parse(JSON.stringify($chatId));
 		_history = structuredClone(_history);
 
+		// Temporary chats: show the first user message as the tab title until a title is generated.
+		if (
+			$temporaryChatEnabled &&
+			!$chatTitle &&
+			createMessagesList(_history, parentId).length === 1
+		) {
+			const content = _history.messages[parentId]?.content;
+			if (typeof content === 'string' && content.trim()) {
+				chatTitle.set(content);
+			}
+		}
+
 		const responseMessageIds: Record<PropertyKey, string> = {};
 		if (!modelId && atSelectedModel) {
 			selectedModels = [atSelectedModel.id];
@@ -4487,13 +4499,13 @@
 				...(continueResponse ? { assistant_message_id: responseMessageId } : {}),
 
 				background_tasks: {
-					...(!$temporaryChatEnabled &&
-					(!_chatId ||
-						((userMessage?.parentId ?? null) === null &&
-							createMessagesList(_history, responseMessageId).length === 2))
+					...(!_chatId ||
+					((userMessage?.parentId ?? null) === null &&
+						createMessagesList(_history, responseMessageId).length === 2)
 						? {
 								title_generation: $settings?.title?.auto ?? true,
-								tags_generation: $settings?.autoTags ?? true
+								// Tags have nowhere to persist for temporary chats.
+								...(!$temporaryChatEnabled ? { tags_generation: $settings?.autoTags ?? true } : {})
 							}
 						: {}),
 					follow_up_generation: $settings?.autoFollowUps ?? true
@@ -5301,8 +5313,11 @@
 										return;
 									}
 									const messages = createMessagesList(history, history.currentId);
+									// Prefer the generated (or interim) temp chat title over the raw first message.
 									const title =
-										messages.find((m) => m.role === 'user')?.content ?? $i18n.t('New Chat');
+										$chatTitle ||
+										messages.find((m) => m.role === 'user')?.content ||
+										$i18n.t('New Chat');
 
 									const savedChat = await createNewChat(
 										localStorage.token,
