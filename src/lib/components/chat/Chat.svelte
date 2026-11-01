@@ -74,6 +74,7 @@
 	import { acquireWakeLock } from '$lib/utils/wakeLock';
 	import { routeAvatarAnimation } from '$lib/utils/voice-avatar';
 	import { createTemporaryChatId, isTemporaryChatId } from '$lib/utils/chatId';
+	import { consumeUrlQuery, tempChatInterimTitle } from '$lib/utils/chatEntry';
 	import {
 		applyResponseStreamEvent,
 		getOutputText,
@@ -2874,22 +2875,20 @@
 				}
 			}
 		} else if ($page.url.searchParams.get('q')) {
-			const q = $page.url.searchParams.get('q') ?? '';
-
-			// Consume the query once per component: native replaceState keeps
-			// SvelteKit's page store untouched (so initNewChat is not re-triggered),
-			// but the store's URL can still carry a stale q until the next
-			// navigation — the guard stops archive/delete handlers from resubmitting.
-			if (q !== consumedUrlQuery) {
-				consumedUrlQuery = q;
+			// Consume the query once per component (see consumeUrlQuery): the
+			// page-store URL can carry a stale q until the next navigation, and
+			// initNewChat is also invoked directly by the archive/delete handlers.
+			const consumed = consumeUrlQuery(location.href, consumedUrlQuery);
+			if (consumed) {
+				consumedUrlQuery = consumed.query;
 
 				// Drop the param so a reload or back navigation cannot resubmit it.
-				const url = new URL(location.href);
-				url.searchParams.delete('q');
-				window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
+				// Native replaceState keeps SvelteKit's page store untouched, so
+				// initNewChat is not re-triggered mid-send.
+				window.history.replaceState(window.history.state, '', consumed.strippedUrl);
 
-				messageInput?.setTextHandler(q);
-				urlQuerySubmitPending = q;
+				messageInput?.setTextHandler(consumed.query);
+				urlQuerySubmitPending = consumed.query;
 			}
 		}
 
@@ -4109,14 +4108,10 @@
 		_history = structuredClone(_history);
 
 		// Temporary chats: show the first user message as the tab title until a title is generated.
-		if (
-			$temporaryChatEnabled &&
-			!$chatTitle &&
-			createMessagesList(_history, parentId).length === 1
-		) {
-			const content = _history.messages[parentId]?.content;
-			if (typeof content === 'string' && content.trim()) {
-				chatTitle.set(content);
+		if ($temporaryChatEnabled) {
+			const interimTitle = tempChatInterimTitle(_history, parentId, $chatTitle);
+			if (interimTitle !== null) {
+				chatTitle.set(interimTitle);
 			}
 		}
 

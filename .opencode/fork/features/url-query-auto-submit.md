@@ -15,7 +15,8 @@ now auto-sends too, matching its "start a chat about this" intent.
 
 ## How it works
 
-All inside `src/lib/components/chat/Chat.svelte`:
+All inside `src/lib/components/chat/Chat.svelte`, with the pure decision logic
+extracted to `src/lib/utils/chatEntry.ts` (unit-tested, see Testing):
 
 1. **Consume + prefill** (`initNewChat`, the `?q=` branch): the query is read
    once per component instance (`consumedUrlQuery` guard), the `q` param is
@@ -58,6 +59,18 @@ All inside `src/lib/components/chat/Chat.svelte`:
 
 ## Testing
 
+**Unit** (runs in CI via `npm run test:frontend`):
+`src/lib/utils/chatEntry.test.ts` — 13 Vitest tests over the extracted
+decision logic in `src/lib/utils/chatEntry.ts`:
+
+- `consumeUrlQuery` — consume-once semantics (first call consumes, same query
+  refused, different query accepted), empty/missing `q` → null, strip preserves
+  pathname/other params/hash, input URL never mutated.
+- `tempChatInterimTitle` — first-turn user message returned; null when a title
+  exists, beyond the first turn, for non-string (multimodal) content,
+  whitespace-only content, or a missing message.
+
+**End-to-end** (manual, against dev servers):
 `../tests/url_query_auto_submit.e2e.cjs` — Playwright browser test against
 both dev servers (Playwright is not a repo dependency; install it ad-hoc, e.g.
 `cd /tmp && npm i playwright && npx playwright install chromium`). Needs a

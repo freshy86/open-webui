@@ -75,6 +75,11 @@ client-side conversations (see `src/lib/utils/chatId.ts`).
 
 ## Tests
 
+**Unit** (runs in CI via `npm run test:frontend`): the interim-title decision
+lives in `src/lib/utils/chatEntry.ts` and is covered by
+`src/lib/utils/chatEntry.test.ts` (`tempChatInterimTitle` — first-turn
+detection, existing-title suppression, non-string/whitespace/missing content).
+
 `../tests/temp_chat_titles_e2e.py` — self-contained socket-level regression
 harness (creates its own throwaway admin user in the dev DB, removes it and
 its chats afterwards; requires the backend running with at least one model):
@@ -91,6 +96,8 @@ and persisted (regression).
 
 - `backend/open_webui/utils/middleware.py` — widened title gate, saved-only DB
   writes + tags, temp-aware fallback title, `messages_map` init.
+- `src/lib/utils/chatEntry.ts` — `tempChatInterimTitle()` (shared with the
+  q-param feature's `consumeUrlQuery()`; unit-tested in `chatEntry.test.ts`).
 - `src/lib/components/chat/Chat.svelte` — `background_tasks` payload includes
-  temp chats (titles only), interim tab title in `sendMessage`, save handler
-  title preference.
+  temp chats (titles only), interim tab title in `sendMessage` (via
+  `tempChatInterimTitle`), save handler title preference.
