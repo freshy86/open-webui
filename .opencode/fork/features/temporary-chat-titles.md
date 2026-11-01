@@ -73,6 +73,20 @@ client-side conversations (see `src/lib/utils/chatId.ts`).
 - `chatTitle` is reset by `initNewChat`/`onSelect` as before, so a temp title
   never leaks into the next chat.
 
+## Tests
+
+`../tests/temp_chat_titles_e2e.py` — self-contained socket-level regression
+harness (creates its own throwaway admin user in the dev DB, removes it and
+its chats afterwards; requires the backend running with at least one model):
+
+```sh
+cd backend && venv/bin/python ../.opencode/fork/tests/temp_chat_titles_e2e.py
+```
+
+Covers: temp-chat `chat:title` event + no DB row, fallback title with
+generation disabled (system prompt must not leak), saved-chat title generated
+and persisted (regression).
+
 ## Files touched
 
 - `backend/open_webui/utils/middleware.py` — widened title gate, saved-only DB

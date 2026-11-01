@@ -58,13 +58,22 @@ All inside `src/lib/components/chat/Chat.svelte`:
 
 ## Testing
 
-Verified with Playwright (chromium headless, installed ad-hoc under /tmp — not
-a repo dependency) against the dev servers, using a throwaway DB user:
+`../tests/url_query_auto_submit.e2e.cjs` — Playwright browser test against
+both dev servers (Playwright is not a repo dependency; install it ad-hoc, e.g.
+`cd /tmp && npm i playwright && npx playwright install chromium`). Needs a
+test user's credentials via `TEST_EMAIL` / `TEST_PASSWORD` env vars. The
+`.cjs` extension is deliberate: the repo root is `"type": "module"` and a
+`*.test.*` name would be collected by Vitest, which has no Playwright.
 
-- `/?temporary-chat=true&q=…` → message sent without input; URL becomes
-  `?temporary-chat=true`; tab title shows the query, then the generated title.
-- New Chat afterwards → no resubmission; tab title resets.
-- `/?q=…` → message sent, URL becomes `/c/<uuid>`, title generated.
+```sh
+TEST_EMAIL=… TEST_PASSWORD=… node .opencode/fork/tests/url_query_auto_submit.e2e.cjs
+```
+
+Covers: `/?temporary-chat=true&q=…` sends immediately, strips `q` from the
+URL, shows the interim query as tab title then the generated title; New Chat
+afterwards does not resubmit; `/?q=…` sends in a saved chat and lands on
+`/c/<uuid>`.
 
 Title generation itself is covered by the temporary-chat-titles feature
-(`temporary-chat-titles.md`) and its socket-level tests.
+(`temporary-chat-titles.md`) and its socket-level test
+(`../tests/temp_chat_titles_e2e.py`).
