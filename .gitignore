@@ -311,3 +311,6 @@ cypress/videos
 cypress/screenshots
 .vscode/settings.json
 .cptr
+
+# local container backups (open-webui data volume dumps)
+backups/
