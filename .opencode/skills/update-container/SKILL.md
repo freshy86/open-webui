@@ -8,7 +8,8 @@ Update the local Open WebUI container to the newest published fork build from
 (https://docs.openwebui.com/getting-started/updating/). The non-negotiable
 order is: **pull → backup → validate backup → and only then stop/replace the
 container**. Never touch the running container before the backup has been
-validated.
+validated. Cleanup of the old image and backup tar is a separate final step
+and only runs after the user explicitly approves it (step 7).
 
 ## 0. Fixed facts (check, don't assume)
 
@@ -174,6 +175,38 @@ Gotchas from real runs:
 Then let the user log in and confirm the UI works; tell them to hard-refresh
 (Cmd+Shift+R / Ctrl+F5) so stale frontend assets don't fake a broken UI.
 
+## 7. Cleanup — old image + backup tar (only after explicit user approval)
+
+Do **not** run this step automatically. It is destructive and gated twice:
+
+1. **The user must have confirmed the update is good** (UI works after login,
+   step 6 passed) — cleanup never runs while the update is still unverified.
+2. **Ask the user before proceeding** (e.g. with the question tool), listing
+   exactly what will be deleted and roughly how much space it frees. Any
+   answer other than an explicit yes → skip the step entirely; do not
+   re-ask within the same session.
+
+What gets deleted (and nothing else):
+
+- The **old image** recorded in step 1:
+  `docker rmi ghcr.io/freshy86/open-webui:<old-tag>` — removes the previous
+  release's image (frees ~5.8 GB unpacked). The new image, the `open-webui`
+  volume, and any *other* tags are untouched.
+- The **backup tar** created in this run:
+  `rm backups/open-webui-<timestamp-of-this-run>.tar.gz` (frees ~1 GB).
+  Only the tarball from **this** update is removed — older backups in
+  `backups/` stay untouched unless the user explicitly asks otherwise.
+
+Verify afterwards:
+
+```sh
+docker images ghcr.io/freshy86/open-webui   # only the new tag remains
+ls -lh backups/                              # this run's tar gone, older ones intact
+```
+
+If the user declines (or doesn't answer), just report that the old image and
+backup are kept and stop.
+
 ## Hard rules
 
 - **Never `rm -f` the container before a validated backup exists** — the
@@ -185,11 +218,13 @@ Then let the user log in and confirm the UI works; tell them to hard-refresh
 - `WEBUI_SECRET_KEY` must be present as an **exported env var** on this
   machine (`[ -n "$WEBUI_SECRET_KEY" ]`); if unset, stop and ask the user —
   do not generate a new one (it would log out every user).
-- Keep old backups in `backups/` until the user confirms the update is good;
-  delete nothing in this skill.
+- Keep old backups in `backups/` until the user confirms the update is good.
+  Deletion happens **only** in step 7, and only after the user explicitly
+  approves it.
 - **Keep the previous image tag locally** (e.g. `v0.12.4_modified`) until the
-  user confirms the update — it is the rollback path. Do **not** run the
-  `docker-build-push` skill's cleanup (it removes local images) in this flow.
+  user confirms the update — it is the rollback path. Removing it is part of
+  step 7 only. Do **not** run the `docker-build-push` skill's cleanup (it
+  removes local images) in this flow.
 - **If the swap fails midway** (anything after `docker rm -f` errors), the
   first action is `docker run -d … ghcr.io/freshy86/open-webui:<old-tag>`
   with the same flags — get the service back up before debugging anything.
