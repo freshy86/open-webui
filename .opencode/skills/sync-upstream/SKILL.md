@@ -1,20 +1,22 @@
 ---
 name: Sync Fork with Upstream
-description: Sync this fork (freshy86/open-webui) with the official open-webui/open-webui repo — fetch upstream, fast-forward only the fork branches that changed upstream, pull all tags, and push the tags. Use when the user asks to sync the fork with the official repo, update from upstream, or pull/push tags.
+description: Sync this fork (freshy86/open-webui) with the official open-webui/open-webui repo — fetch upstream, fast-forward only the `main` branch, and push only the latest release tag. Use when the user asks to sync the fork with the official repo, update from upstream, or pull/push the latest tag.
 ---
 
 Sync `origin` (`freshy86/open-webui`) with `upstream`
-(`https://github.com/open-webui/open-webui`). Run from the repo root. This is
-safe on any checked-out branch and never touches the working tree.
+(`https://github.com/open-webui/open-webui`). **Scope: the `main` branch and
+the latest release tag only.** Other branches (`dev`, `dependabot/*`, feature
+branches) are NOT synced. Run from the repo root. This is safe on any
+checked-out branch and never touches the working tree.
 
 ## 0. Hard rules
 
-- **Fast-forward only. Never force-push.** If a fork branch diverged from
-  upstream, skip it and report — never resolve, never rewrite.
-- **Never touch any branch except the ones changed on the official repo.**
-  Fork-only branches (e.g. `v0.12.4_modified`) and the current local checkout
-  are left completely alone. All syncing happens via push refspecs against
-  `origin` — no local branch is ever checked out, reset, or merged.
+- **Fast-forward only. Never force-push.** If the fork `main` diverged from
+  upstream `main`, skip it and report — never resolve, never rewrite.
+- **Never touch any branch other than `main`.** Fork-only branches (e.g.
+  `v0.12.4_modified`), `dev`, and the current local checkout are left
+  completely alone. All syncing happens via push refspecs against `origin` —
+  no local branch is ever checked out, reset, or merged.
 - **Never push to upstream.** This is one-way: official → fork.
 - Verify everything with `git ls-remote`; **do not trust push output**. It can
   omit ref-update lines for refs that did update (seen on 2026-10-31: the
@@ -42,76 +44,75 @@ git fetch upstream --tags --prune
 Use a generous timeout (300 s or more). `--prune` drops stale
 `upstream/*`-prefixed tracking refs; it does not touch local tags or branches.
 
-## 3. Sync only the branches that changed upstream
+## 3. Sync `main` only
 
-Compare the remote SHAs directly — never compare against local `main`/`dev`,
-which may be stale. For every branch on upstream, classify against `origin`:
+Compare the remote SHAs directly — never compare against local `main`, which
+may be stale. Ignore every other branch (including `dev` and all
+`dependabot/*` branches): they are out of scope, do not create, update, or
+report on them beyond noting they were skipped.
+
+Classify `main` against `origin`:
 
 - same SHA → up to date, skip
-- missing on origin → **new upstream branch**: create it on origin
 - origin's SHA is an ancestor of upstream's → fast-forward it
 - diverged → **skip and report** (hard rule above)
 
 ```sh
-git ls-remote --heads upstream | while read -r sha ref; do
-  branch=${ref#refs/heads/}
-  origin_sha=$(git ls-remote origin "refs/heads/$branch" | awk '{print $1}')
-  if [ -z "$origin_sha" ]; then
-    echo "NEW:          $branch -> $sha"
-    git push origin "upstream/$branch:$branch"
-  elif [ "$origin_sha" = "$sha" ]; then
-    echo "UP-TO-DATE:   $branch"
-  elif git merge-base --is-ancestor "$origin_sha" "$sha"; then
-    echo "FAST-FORWARD: $branch $origin_sha -> $sha"
-    git push origin "upstream/$branch:$branch"
-  else
-    echo "DIVERGED (SKIPPED): $branch origin=$origin_sha upstream=$sha"
-  fi
-done
+upstream_sha=$(git ls-remote upstream refs/heads/main | awk '{print $1}')
+origin_sha=$(git ls-remote origin refs/heads/main | awk '{print $1}')
+if [ "$origin_sha" = "$upstream_sha" ]; then
+  echo "UP-TO-DATE:   main $origin_sha"
+elif git merge-base --is-ancestor "$origin_sha" "$upstream_sha"; then
+  echo "FAST-FORWARD: main $origin_sha -> $upstream_sha"
+  git push origin "upstream/main:main"
+else
+  echo "DIVERGED (SKIPPED): main origin=$origin_sha upstream=$upstream_sha"
+fi
 ```
 
-`merge-base --is-ancestor` works here because step 2 fetched all upstream
-objects into the local repo. Verify afterwards with
-`git ls-remote origin refs/heads/main refs/heads/dev` (and any new branches).
+`merge-base --is-ancestor` works here because step 2 fetched the upstream
+objects into the local repo.
 
-## 4. Pull and push all tags
+## 4. Push only the latest release tag
 
-All upstream tags are already local after step 2 (verify: `git tag | wc -l`
-vs `git ls-remote --tags upstream | grep -v '\^{}' | wc -l` — counts must
-match; ~177 as of 2026-10-31, and `grep -v '\^{}'` excludes the peeled
-`^{}` duplicate lines).
-
-Push only the tags that are missing on origin — `--tags` does exactly that,
-printing a line per tag actually added:
+All upstream tags are already local after step 2. Identify the latest release
+tag by version sort (upstream has ~178 tags; `grep -v '\^{}'` excludes the
+peeled `^{}` duplicate lines):
 
 ```sh
-git push origin --tags
+latest_tag=$(git tag --list 'v*' | grep -v '\^{}' | sort -V | tail -1)
+echo "latest release tag: $latest_tag"
 ```
 
-If a tag push is rejected because a same-named tag already exists on origin
-pointing elsewhere, **stop and report** — do not force-update tags.
+Push it only if missing on origin:
+
+```sh
+if [ -z "$(git ls-remote origin "refs/tags/$latest_tag")" ]; then
+  git push origin "$latest_tag"
+else
+  echo "$latest_tag already on origin"
+fi
+```
+
+Do **not** run `git push origin --tags` — it would push every new tag, which
+is out of scope. If the tag push is rejected because a same-named tag already
+exists on origin pointing elsewhere, **stop and report** — do not
+force-update tags.
 
 ## 5. Verify (mandatory)
 
 ```sh
-# tag lists identical between upstream and origin?
-git ls-remote --tags upstream | grep -v '\^{}' | awk -F'refs/tags/' '{print $2}' | sort > /tmp/opencode/upstream_tags.txt
-git ls-remote --tags origin   | grep -v '\^{}' | awk -F'refs/tags/' '{print $2}' | sort > /tmp/opencode/origin_tags.txt
-diff /tmp/opencode/upstream_tags.txt /tmp/opencode/origin_tags.txt && echo "tags OK"
-
-# branch SHAs identical?
-git ls-remote --heads upstream | awk '{print $2}' | sort > /tmp/opencode/upstream_heads.txt
-git ls-remote --heads origin   | awk '{print $2}' | sort > /tmp/opencode/origin_heads.txt
-diff /tmp/opencode/upstream_heads.txt /tmp/opencode/origin_heads.txt
+git ls-remote origin refs/heads/main "refs/tags/$latest_tag"
+git ls-remote upstream refs/heads/main "refs/tags/$latest_tag"
 ```
 
-The branch diff must show **only** fork-only branches (lines only on the
-origin side, e.g. `refs/heads/v0.12.4_modified`). Anything only on the
-upstream side means a branch was missed; anything diverged was skipped in
-step 3.
+Both lines of `origin` output must match the corresponding `upstream` SHAs
+exactly: `refs/heads/main` identical, and the tag resolved to the same SHA
+(the tag's own SHA if annotated; compare the peeled `^{}` line if present).
 
 ## 6. Report
 
-One line each: branches fast-forwarded / created / skipped (with reason),
-number of tags added, and the final tag totals. Confirm the working tree and
-current branch were untouched.
+One line each: `main` fast-forwarded or up-to-date or diverged (with reason),
+latest release tag pushed or already present (with the tag name). Confirm the
+working tree and current branch were untouched. Mention explicitly that other
+branches and older tags were not synced (out of scope).
