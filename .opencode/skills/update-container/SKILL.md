@@ -115,30 +115,33 @@ docker run --rm -v open-webui:/data -v "$PWD/backups:/backup" alpine \
 ## 5. Validate the backup — do not skip
 
 A backup that exists is not a backup that works. Check content, integrity,
-and usability of the SQLite file inside:
+and usability of the SQLite file inside — **extract and check in a single
+container** (a first alpine container that extracts to `/tmp` writes to its
+own ephemeral filesystem, so a second container reading `/backup/tmp/…`
+finds nothing — hit for real on 2026-11-03):
 
 ```sh
 f=$(ls -t backups/open-webui-*.tar.gz | head -1)
 ls -lh "$f"                                             # non-trivial size
-tar tzf "$f" | grep -c webui.db                         # entry exists
-docker run --rm -i -v "$PWD/backups:/backup" alpine sh -c "
-  tar xzf /backup/$(basename $f) -C /tmp &&
-  du -sh /tmp/data &&
-  test -s /tmp/data/webui.db"
-```
+tar tzf "$f" | grep -c webui.db                         # entry exists (db + -wal + -shm)
 
-Then integrity-check the DB copy in a throwaway container (SQLite CLI ships
-inside the open-webui image itself):
-
-```sh
-docker run --rm -v "$PWD/backups:/backup" \
-  ghcr.io/freshy86/open-webui:vX.Y.Z_modified python3 -c "
-import sqlite3, glob
-p = glob.glob('/backup/tmp/data/webui.db')[0]
-c = sqlite3.connect(p)
+# Write the check script to a temp file and mount it (avoids quoting hell):
+cat > "$TMPDIR/check_backup.py" <<'EOF'
+import sqlite3
+c = sqlite3.connect('/tmp/data/webui.db')
 print('integrity:', c.execute('PRAGMA integrity_check').fetchone()[0])
 print('chats:', c.execute('select count(*) from chat').fetchone()[0])
-print('users:', c.execute('select count(*) from user').fetchone()[0])"
+print('users:', c.execute('select count(*) from user').fetchone()[0])
+EOF
+
+# The open-webui image has both tar and python3 — do everything in one run:
+docker run --rm -v "$PWD/backups:/backup" \
+  -v "$TMPDIR/check_backup.py:/check.py" \
+  ghcr.io/freshy86/open-webui:vX.Y.Z_modified sh -c "
+  tar xzf /backup/$(basename $f) -C /tmp &&
+  du -sh /tmp/data &&
+  test -s /tmp/data/webui.db &&
+  python3 /check.py"
 ```
 
 Gate: proceed **only if** (a) the tarball is non-empty and lists `data/webui.db`,
